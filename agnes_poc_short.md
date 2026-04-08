@@ -15,6 +15,8 @@ Rank ingredients by a simple score based on:
 High score = strong consolidation candidate.
 
 ### 2. Requirements Layer
+
+Tip: If a finished product has a requirement, usually the raw material has the same requirement 
 For the top 3–4 ingredients, define:
 - **hard constraints** that must be met
 - **soft preferences** that improve attractiveness
@@ -61,14 +63,6 @@ Generate an explainable recommendation:
 - Accept
 - Reject
 - Conditional Accept
-
-## Why this PoC works
-
-- focused enough for a hackathon
-- directly tied to business value
-- combines internal data with external evidence
-- explainable and auditable
-- handles uncertainty explicitly
 
 ## Scope
 
