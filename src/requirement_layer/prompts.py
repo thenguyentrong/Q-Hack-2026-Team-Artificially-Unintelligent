@@ -32,5 +32,5 @@ Classification rules:
 - soft: physical/processing properties (particle size, colour, solubility)
 - Always include source_reference tracing to the standard
 
-Respond ONLY with the JSON array. No explanation, no markdown fences.
+You may include reasoning or context, but you MUST provide the JSON array wrapped in a ```json markdown code block.
 """

@@ -107,12 +107,16 @@ class RequirementEngine:
 
         response = self._generate_with_retry(history, config)
         candidate = response.candidates[0]
-        text_parts = [p.text for p in candidate.content.parts if p.text]
+        
+        text_parts = []
+        if candidate.content and candidate.content.parts:
+            text_parts = [p.text for p in candidate.content.parts if p.text]
+            
         raw_rules: list[dict] = (
             self._parse_rules("\n".join(text_parts)) if text_parts else []
         )
 
-        return self._validate_rules(raw_rules, id_gen)
+        return self._validate_rules(raw_rules or [], id_gen)
 
     def _generate_with_retry(
         self,
@@ -148,26 +152,37 @@ class RequirementEngine:
     def _parse_rules(content: str) -> list[dict]:
         """Extract a JSON array from the LLM's text response."""
         text = content.strip()
-
-        # Strip markdown code fences if present
-        if text.startswith("```"):
-            lines = text.splitlines()
-            inner = lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
-            text = "\n".join(inner).strip()
+        
+        # Try to find JSON inside markdown code blocks first
+        import re
+        match = re.search(r'```(?:json)?\s*(.*?)\s*```', text, re.DOTALL)
+        if match:
+            text = match.group(1).strip()
+        else:
+            # Fallback to finding the first [ or {
+            start = text.find('[')
+            start_obj = text.find('{')
+            if start_obj != -1 and (start == -1 or start_obj < start):
+                start = start_obj
+            end = text.rfind(']')
+            end_obj = text.rfind('}')
+            if end_obj != -1 and (end == -1 or end_obj > end):
+                end = end_obj
+            if start != -1 and end != -1 and end >= start:
+                text = text[start:end+1].strip()
 
         try:
             parsed = json.loads(text)
             if isinstance(parsed, list):
                 return parsed
             if isinstance(parsed, dict) and "requirements" in parsed:
-                return parsed["requirements"]
+                return parsed.get("requirements") or []
         except json.JSONDecodeError as exc:
             logger.error(
                 "Failed to parse LLM response as JSON: %s\nContent: %s",
                 exc,
-                content[:500],
+                text[:500],
             )
-
         return []
 
     def _validate_rules(

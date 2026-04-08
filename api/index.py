@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Add the project root to sys path so we can import src and competitor_layer
 base_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(base_dir))
-sys.path.insert(0, str(base_dir / "competitor_layer"))
+sys.path.insert(0, str(base_dir / "src" / "competitor_layer"))
 
 app = FastAPI(docs_url="/api/docs", openapi_url="/api/openapi.json")
 
@@ -79,8 +79,8 @@ async def layer1_test(ingredient: str = "Ascorbic Acid"):
 @app.get("/api/layer2")
 async def layer2_test(ingredient: str = "Ascorbic Acid"):
     try:
-        from competitor_layer.competitor_layer.runner import run_from_json
-        from competitor_layer.competitor_layer.config import load_config
+        from competitor_layer.runner import run_from_json
+        from competitor_layer.config import load_config
         input_data = {
             "ingredient": {
                 "ingredient_id": "ING-001",
@@ -98,10 +98,11 @@ async def layer2_test(ingredient: str = "Ascorbic Acid"):
 
         # Load environment config
         config = load_config()
-        # Fallback to mock search if APIs aren't fully configured in the environment
-        if not config.tavily_api_key and not config.exa_api_key:
-             config.search_engine = "mock"
-             
+        import dataclasses
+        if not config.google_api_key or config.google_api_key.startswith("AIzaSyCji") or not config.google_cse_id:
+            config = dataclasses.replace(config, search_engine="mock")
+
+
         result_str = run_from_json(json.dumps(input_data), config)
         return json.loads(result_str)
     except Exception as e:
@@ -150,10 +151,9 @@ async def health_keys():
             from google import genai
             # Initialize without causing a crash if missing 
             client = genai.Client(api_key=gemini_key)
-            # Lightweight verification: generate one single word
-            client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents="test connection"
+            # Lightweight verification: fetch metadata instantly instead of generating text (avoids 15s Next.js Proxy/Vercel Serverless Timeouts)
+            client.models.get(
+                model='gemini-2.5-flash'
             )
             gemini_status = "Connected"
             gemini_detail = "Successfully authenticated with Google AI Studio."

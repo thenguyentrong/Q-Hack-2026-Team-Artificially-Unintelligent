@@ -62,7 +62,7 @@ export default function WorkspacePage() {
               </div>
               <button 
                 className="btn-primary" 
-                onClick={() => runTest('layer1', '/api/layer1?ingredient=Ascorbic+Acid')}
+                onClick={() => runTest('layer1', 'http://127.0.0.1:8000/api/layer1?ingredient=Ascorbic+Acid')}
                 disabled={loading['layer1']}
               >
                 {loading['layer1'] ? 'Running Engine...' : 'Run Layer 1 Test'}
@@ -105,7 +105,7 @@ export default function WorkspacePage() {
               </div>
               <button 
                 className="btn-primary" 
-                onClick={() => runTest('layer2', '/api/layer2')}
+                onClick={() => runTest('layer2', 'http://127.0.0.1:8000/api/layer2')}
                 disabled={loading['layer2']}
               >
                 {loading['layer2'] ? 'Running Agents...' : 'Run Layer 2 Test'}
@@ -146,7 +146,7 @@ export default function WorkspacePage() {
               </div>
               <button 
                 className="btn-primary" 
-                onClick={() => runTest('layer3', '/api/layer3')}
+                onClick={() => runTest('layer3', 'http://127.0.0.1:8000/api/layer3')}
                 disabled={loading['layer3']}
               >
                 {loading['layer3'] ? 'Analyzing PDFs...' : 'Run Layer 3 Test'}
@@ -187,7 +187,7 @@ export default function WorkspacePage() {
               </div>
               <button 
                 className="btn-primary" 
-                onClick={() => runTest('layer4', '/api/layer4')}
+                onClick={() => runTest('layer4', 'http://127.0.0.1:8000/api/layer4')}
                 disabled={loading['layer4']}
               >
                 {loading['layer4'] ? 'Deciding...' : 'Run Layer 4 Test'}

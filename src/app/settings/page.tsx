@@ -11,7 +11,19 @@ export default function SettingsPage() {
     setResults(null);
     try {
       const res = await fetch("/api/health/keys");
-      const data = await res.json();
+      
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseError) {
+        // If Vercel or local Proxy throws a 504 HTML page due to dead backend or timeouts
+        throw new Error(`Server returned a non-JSON framework error (Status: ${res.status}). Verify your FastAPI backend is actually running natively!`);
+      }
+      
+      if (!res.ok && data.error) {
+        throw new Error(data.detail || data.error);
+      }
+      
       setResults(data);
     } catch (err: any) {
       setResults({
