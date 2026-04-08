@@ -1,1 +1,5 @@
 .venv/
+*.env
+.cursor/
+.DS_Store
+*__pycache__/
