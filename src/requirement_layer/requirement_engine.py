@@ -22,6 +22,13 @@ from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
 from id_generator import IdGenerator
+from model_config import (
+    DEFAULT_MAX_RETRIES,
+    DEFAULT_MODEL,
+    DEFAULT_RETRY_DELAY,
+    GEMINI_TOOLS,
+)
+from prompts import SYSTEM_PROMPT
 from rule_validator import RuleValidator
 from schemas.models import (
     IngredientContext,
@@ -32,77 +39,30 @@ from schemas.models import (
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# System prompt
-# ---------------------------------------------------------------------------
-
-SYSTEM_PROMPT = """You are a senior regulatory affairs expert specialising in food, pharmaceutical,
-and nutraceutical ingredient quality standards.
-
-Your task: given an ingredient name and optional context (product category, region), generate a
-comprehensive set of quality requirements based on official industry standards such as USP, FCC,
-FDA, EU regulations, Codex Alimentarius, or ISO.
-
-Use Google Search to find current standards and requirements for the ingredient.
-
-After gathering information, produce a JSON array of requirement objects. Each object MUST conform
-exactly to this structure (include only applicable fields):
-
-{
-  "field_name": "<stable snake_case name e.g. assay_percent>",
-  "rule_type": "<range|minimum|maximum|enum_match|boolean_required|free_text_reference>",
-  "operator": "<between|>=|<=|in|==|reference>",
-  "priority": "<hard|soft>",
-  "source_reference": "<e.g. USP 43, FCC 12, EU 231/2012>",
-  "unit": "<e.g. %, ppm, mg/kg, um>",
-  "min_value": <number or null>,
-  "max_value": <number or null>,
-  "allowed_values": [<strings>] or null,
-  "required": <true|false> or null,
-  "reference_text": "<text>" or null,
-  "notes": "<optional context>"
-}
-
-Classification rules:
-- hard: safety-critical (heavy metals, microbiological limits, assay purity, identity tests)
-- soft: physical/processing properties (particle size, colour, solubility)
-- Always include source_reference tracing to the standard
-
-Respond ONLY with the JSON array. No explanation, no markdown fences.
-"""
-
-# ---------------------------------------------------------------------------
-# Tool declarations for Gemini function calling
-# ---------------------------------------------------------------------------
-
-GEMINI_TOOLS = [
-    types.Tool(google_search=types.GoogleSearch()),
-]
-
-
-# ---------------------------------------------------------------------------
 # RequirementEngine agent (Gemini)
 # ---------------------------------------------------------------------------
 
 
 class RequirementEngine:
     """
-    LLM agent (Google Gemini) that fetches ingredient requirements via Google
-    Search Grounding, then parses and validates the results into RequirementRule objects.
+    LLM agent (Google Gemini) that fetches ingredient requirements via Google Search.
+
+    Then parses and validates the results into RequirementRule objects.
     """
 
     def __init__(
         self,
         api_key: str | None = None,
         model: str | None = None,
-        max_retries: int = 3,
-        retry_delay: float = 10.0,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
     ) -> None:
         resolved_key = api_key or os.getenv("GEMINI_API_KEY")
         if not resolved_key:
             raise OSError("GEMINI_API_KEY is required for the RequirementEngine agent")
 
         self._client = genai.Client(api_key=resolved_key)
-        self._model = model or os.getenv("GEMINI_MODEL", "gemma-4-31b-it")
+        self._model = model or DEFAULT_MODEL
         self._max_retries = max_retries
         self._retry_delay = retry_delay
         self._validator = RuleValidator()
