@@ -39,7 +39,14 @@ def main() -> None:
     graph = build_graph()
 
     print(f"\nResearching suppliers for: {args.ingredient!r}\n", flush=True)
-    final_state = graph.invoke({"ingredient_name": args.ingredient, "suppliers": [], "results": []})
+    final_state = graph.invoke({
+        "ingredient_name": args.ingredient,
+        "suppliers": [],
+        "results": [],
+        "supplier_idx": 0,
+        "verify_idx": 0,
+        "verifications": [],
+    })
 
     results = final_state.get("results", [])
 
@@ -47,8 +54,14 @@ def main() -> None:
         print("No suppliers found for this ingredient in the database.")
         return
 
+    verifications = final_state.get("verifications", [])
+
     if args.json:
-        print(json.dumps([r.model_dump() for r in results], indent=2))
+        output = {
+            "results": [r.model_dump() for r in results],
+            "verifications": [v.model_dump() for v in verifications],
+        }
+        print(json.dumps(output, indent=2))
         return
 
     # Human-readable output
@@ -80,6 +93,38 @@ def main() -> None:
             for u in r.search_urls[1:]:
                 print(f"           {u}")
         print("-" * 70)
+
+    # ---- Verification results ----
+    if verifications:
+        print("\n\n" + "=" * 70)
+        print("QUALITY VERIFICATION REPORT")
+        print("=" * 70)
+        for v in verifications:
+            print(f"\nSupplier  : {v.supplier_name}")
+            print(f"Evidence  : {v.evidence_quality}")
+            print(f"Confidence: {v.confidence_score}")
+            print(f"Sources   : {len(v.sources)}")
+
+            if v.extracted_fields:
+                print(f"\n  Extracted fields ({len(v.extracted_fields)}):")
+                for fname, fval in sorted(v.extracted_fields.items()):
+                    unit = f" {fval.unit}" if fval.unit else ""
+                    print(f"    {fname:30s} = {fval.value}{unit}")
+
+            if v.comparison:
+                print(f"\n  Compliance check:")
+                for c in v.comparison:
+                    icon = {"pass": "+", "fail": "X", "missing": "?"}[c.verdict]
+                    actual = c.actual or "—"
+                    sc_tag = f" [src:{c.source_confidence}]" if c.source_confidence not in ("n/a", "high") else ""
+                    print(f"    [{icon}] {c.field:25s}  required: {c.required:20s}  actual: {actual:15s}  ({c.priority}){sc_tag}")
+
+            if v.missing_evidence:
+                print(f"\n  Missing evidence: {', '.join(v.missing_evidence)}")
+
+            print("-" * 70)
+    else:
+        print("\n(No verification results — no requirements file found?)")
 
 
 if __name__ == "__main__":
