@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "ingredient": {
+    "ingredient_id": "ING-ASCORBIC-ACID",
+    "canonical_name": "Ascorbic Acid",
+    "aliases": ["Vitamin C", "L-Ascorbic Acid", "L-threo-Hex-2-enono-1,4-lactone"]
+  },
+  "context": {
+    "product_category": "beverage",
+    "region": "EU"
+  },
+  "baseline_supplier": null
+}
