@@ -14,5 +14,8 @@ dependencies = [
     "google-genai>=1.0",
 ]
 
+[tool.setuptools.packages.find]
+include = ["competitor_layer*"]
+
 [project.scripts]
 competitor-layer = "competitor_layer.cli:main"

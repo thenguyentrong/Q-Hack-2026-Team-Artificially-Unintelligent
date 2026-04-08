@@ -48,4 +48,5 @@ __pycache__/
 *.egg-info/
 dist/
 
+src/competitor_layer/demo_output/*
 .vercel
