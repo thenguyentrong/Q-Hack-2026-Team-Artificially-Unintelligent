@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "ingredient": {
+    "ingredient_id": "ING-CITRIC-ACID",
+    "canonical_name": "Citric Acid",
+    "aliases": ["2-Hydroxypropane-1,2,3-tricarboxylic acid", "Anhydrous Citric Acid"]
+  },
+  "context": {
+    "product_category": "food_additive",
+    "region": "US"
+  },
+  "baseline_supplier": null
+}
