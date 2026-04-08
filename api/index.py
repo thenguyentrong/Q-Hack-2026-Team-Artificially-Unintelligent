@@ -1,12 +1,14 @@
-from http.server import BaseHTTPRequestHandler
-import json
+from fastapi import FastAPI
 
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps({
-            "ok": True,
-            "message": "Agnes backend is live"
-        }).encode())
+app = FastAPI()
+
+@app.get("/")
+def root():
+    return {
+        "ok": True,
+        "message": "Agnes backend is live"
+    }
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
