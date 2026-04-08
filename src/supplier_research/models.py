@@ -55,6 +55,10 @@ class ExtractedField(BaseModel):
     value: str
     unit: Optional[str] = None
     source_url: Optional[str] = None
+    source_confidence: Literal["high", "medium", "low"] = "medium"
+    """high = document is clearly for this ingredient+supplier;
+       medium = plausible but uncertain;
+       low = document likely describes a different product/grade."""
 
 
 class ComparisonEntry(BaseModel):
@@ -63,6 +67,7 @@ class ComparisonEntry(BaseModel):
     actual: Optional[str] = None
     verdict: Literal["pass", "fail", "missing"] = "missing"
     priority: Literal["critical", "major", "minor"] = "major"
+    source_confidence: Literal["high", "medium", "low", "n/a"] = "n/a"
 
 
 class VerificationResult(BaseModel):

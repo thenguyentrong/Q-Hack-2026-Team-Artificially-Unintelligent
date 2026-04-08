@@ -14,7 +14,8 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import create_react_agent
 
 from .db import get_suppliers_for_ingredient
-from .models import QualityProperties, SupplierResult
+from .models import QualityProperties, SupplierResult, VerificationResult
+from .verify import verify_supplier_result
 
 # Seconds to wait between Gemini calls to stay within free-tier rate limits
 _RATE_LIMIT_DELAY = 10
@@ -32,6 +33,9 @@ class OverallState(TypedDict):
     # Index of the next supplier to process (sequential loop)
     supplier_idx: int
     results: Annotated[list[SupplierResult], operator.add]
+    # Agent 2 – verification
+    verify_idx: int
+    verifications: Annotated[list[VerificationResult], operator.add]
 
 
 # ---------------------------------------------------------------------------
@@ -55,21 +59,33 @@ def _extract_urls_from_messages(messages: list) -> list[str]:
     return list(dict.fromkeys(urls))  # deduplicate, preserve order
 
 
+def _parse_retry_delay(err_str: str) -> float:
+    """Extract the suggested retry delay (seconds) from a 429 error message."""
+    import re
+    m = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str)
+    if m:
+        return float(m.group(1)) + 5  # add 5s buffer
+    return _RATE_LIMIT_DELAY
+
+
 def _call_with_retry(fn, *args, **kwargs):
-    """Call fn with exponential backoff on 429 / RESOURCE_EXHAUSTED errors."""
-    for attempt in range(_MAX_RETRIES):
+    """Call fn with backoff on 429 / RESOURCE_EXHAUSTED, honouring the API's retry-after hint."""
+    for attempt in range(_MAX_RETRIES + 1):  # +1 so last iteration still retries
         try:
             return fn(*args, **kwargs)
         except Exception as exc:
             err_str = str(exc)
             if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                wait = _RATE_LIMIT_DELAY * (2 ** attempt)
-                print(f"  Rate limited (attempt {attempt + 1}/{_MAX_RETRIES}), waiting {wait}s...", file=sys.stderr, flush=True)
+                if attempt == _MAX_RETRIES:
+                    raise  # exhausted retries
+                wait = max(_parse_retry_delay(err_str), _RATE_LIMIT_DELAY * (2 ** attempt))
+                print(
+                    f"  Rate limited (attempt {attempt + 1}/{_MAX_RETRIES}), waiting {wait:.0f}s...",
+                    file=sys.stderr, flush=True,
+                )
                 time.sleep(wait)
             else:
                 raise
-    # Final attempt — let it raise
-    return fn(*args, **kwargs)
 
 
 def _build_llm() -> ChatGoogleGenerativeAI:
@@ -174,15 +190,68 @@ Use null for any field you cannot confidently determine from the text below.
 
 
 # ---------------------------------------------------------------------------
+# Agent 2 – verification nodes
+# ---------------------------------------------------------------------------
+
+def start_verification(state: OverallState) -> dict:
+    """Transition node: reset verify_idx to 0 before the verification loop."""
+    return {"verify_idx": 0}
+
+
+def check_verify_done(state: OverallState) -> str:
+    """Conditional edge – loop through results for verification or end."""
+    if state["verify_idx"] >= len(state["results"]):
+        return "done"
+    return "continue"
+
+
+def verify_supplier(state: OverallState) -> dict:
+    """Node 3 – run quality verification for ONE supplier result."""
+    idx = state["verify_idx"]
+    result = state["results"][idx]
+    total = len(state["results"])
+
+    print(
+        f"\n[Verify {idx + 1}/{total}] Verifying {result.supplier_name}...",
+        file=sys.stderr, flush=True,
+    )
+
+    verification = verify_supplier_result(
+        result,
+        call_with_retry=_call_with_retry,
+        build_llm=_build_llm,
+        rate_limit_delay=_RATE_LIMIT_DELAY,
+    )
+
+    passed = sum(1 for c in verification.comparison if c.verdict == "pass")
+    failed = sum(1 for c in verification.comparison if c.verdict == "fail")
+    missing = sum(1 for c in verification.comparison if c.verdict == "missing")
+    print(
+        f"  Results: {passed} pass, {failed} fail, {missing} missing "
+        f"| evidence: {verification.evidence_quality} "
+        f"| confidence: {verification.confidence_score}",
+        file=sys.stderr, flush=True,
+    )
+
+    return {"verifications": [verification], "verify_idx": idx + 1}
+
+
+# ---------------------------------------------------------------------------
 # Graph assembly
 # ---------------------------------------------------------------------------
 
 def build_graph():
     g = StateGraph(OverallState)
 
+    # Agent 1 nodes
     g.add_node("query_db", query_db)
     g.add_node("research_supplier", research_supplier)
 
+    # Agent 2 nodes
+    g.add_node("start_verification", start_verification)
+    g.add_node("verify_supplier", verify_supplier)
+
+    # Agent 1 flow: query → research loop
     g.add_edge(START, "query_db")
     g.add_conditional_edges(
         "query_db",
@@ -192,7 +261,19 @@ def build_graph():
     g.add_conditional_edges(
         "research_supplier",
         check_done,
-        {"continue": "research_supplier", "done": END},
+        {"continue": "research_supplier", "done": "start_verification"},
+    )
+
+    # Agent 2 flow: verification loop
+    g.add_conditional_edges(
+        "start_verification",
+        check_verify_done,
+        {"continue": "verify_supplier", "done": END},
+    )
+    g.add_conditional_edges(
+        "verify_supplier",
+        check_verify_done,
+        {"continue": "verify_supplier", "done": END},
     )
 
     return g.compile()
