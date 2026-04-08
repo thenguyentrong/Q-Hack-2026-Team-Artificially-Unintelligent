@@ -1,0 +1,14 @@
+[
+  {"field_name": "assay_percent", "field_type": "numeric", "allowed_units": ["%"]},
+  {"field_name": "loss_on_drying_percent", "field_type": "numeric", "allowed_units": ["%"]},
+  {"field_name": "heavy_metals_ppm", "field_type": "numeric", "allowed_units": ["ppm"]},
+  {"field_name": "lead_ppm", "field_type": "numeric", "allowed_units": ["ppm"]},
+  {"field_name": "arsenic_ppm", "field_type": "numeric", "allowed_units": ["ppm"]},
+  {"field_name": "particle_size_mesh", "field_type": "numeric", "allowed_units": ["mesh"]},
+  {"field_name": "pH", "field_type": "numeric", "allowed_units": [""]},
+  {"field_name": "shelf_life_months", "field_type": "numeric", "allowed_units": ["months"]},
+  {"field_name": "grade_claims", "field_type": "enum", "allowed_units": []},
+  {"field_name": "certifications", "field_type": "enum", "allowed_units": []},
+  {"field_name": "appearance", "field_type": "text", "allowed_units": []},
+  {"field_name": "micro_limits", "field_type": "text", "allowed_units": []}
+]

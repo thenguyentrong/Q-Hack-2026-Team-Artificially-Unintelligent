@@ -1,0 +1,4 @@
+{
+  "priority_order": ["coa", "tds", "certification_page", "product_page", "marketing_page", "other"],
+  "description": "Lower index = higher priority. COA is batch-specific and strongest."
+}

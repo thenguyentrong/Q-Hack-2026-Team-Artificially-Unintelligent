@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "ingredient_id": "ING-ASCORBIC-ACID",
+  "supplier_assessments": [
+    {
+      "supplier_id": "SUP-001",
+      "evidence_items": [
+        {
+          "evidence_id": "EVID-SUP-001-001",
+          "source_type": "tds",
+          "source_url": "https://example.com/docs/ascorbic-acid-tds.pdf",
+          "title": "Ascorbic Acid Technical Data Sheet",
+          "status": "retrieved",
+          "retrieved_at": "2026-04-09T12:00:00Z"
+        }
+      ],
+      "extracted_attributes": [
+        {
+          "attribute_id": "ATTR-SUP-001-001",
+          "field_name": "assay_percent",
+          "value": 99.7,
+          "unit": "%",
+          "source_evidence_id": "EVID-SUP-001-001",
+          "confidence": "high",
+          "extraction_method": "llm_extraction"
+        },
+        {
+          "attribute_id": "ATTR-SUP-001-002",
+          "field_name": "heavy_metals_ppm",
+          "value": 8,
+          "unit": "ppm",
+          "source_evidence_id": "EVID-SUP-001-001",
+          "confidence": "high",
+          "extraction_method": "llm_extraction"
+        }
+      ],
+      "verification_results": [
+        {
+          "verification_id": "VER-SUP-001-001",
+          "requirement_id": "REQ-ASC-001",
+          "field_name": "assay_percent",
+          "status": "pass",
+          "observed_value": 99.7,
+          "unit": "%",
+          "confidence": "high",
+          "reason": "Observed assay 99.7% is within required range 99.0-100.5%",
+          "supporting_evidence_ids": ["EVID-SUP-001-001"]
+        },
+        {
+          "verification_id": "VER-SUP-001-002",
+          "requirement_id": "REQ-ASC-002",
+          "field_name": "heavy_metals_ppm",
+          "status": "pass",
+          "observed_value": 8,
+          "unit": "ppm",
+          "confidence": "high",
+          "reason": "Observed heavy metals 8 ppm is within maximum 10 ppm",
+          "supporting_evidence_ids": ["EVID-SUP-001-001"]
+        }
+      ],
+      "coverage_summary": {
+        "requirements_total": 2,
+        "hard_pass": 1,
+        "hard_fail": 0,
+        "hard_unknown": 0,
+        "soft_pass": 1,
+        "soft_fail": 0,
+        "soft_unknown": 0
+      },
+      "overall_evidence_confidence": "high",
+      "overall_status": "verified",
+      "notes": []
+    }
+  ]
+}
