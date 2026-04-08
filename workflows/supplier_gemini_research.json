@@ -1,0 +1,167 @@
+{
+  "name": "Agnes – Supplier Research (Gemini + Google Search)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "11111111-1111-1111-1111-111111111111",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [180, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "asgn-ingredient",
+              "name": "ingredient_name",
+              "value": "calcium citrate",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "22222222-2222-2222-2222-222222222222",
+      "name": "Set Ingredient",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [400, 300],
+      "notes": "Change 'calcium citrate' to the ingredient you want to research."
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT DISTINCT\n  s.Id   AS supplier_id,\n  s.Name AS supplier_name,\n  p.SKU  AS sku\nFROM Supplier s\nJOIN Supplier_Product sp ON s.Id = sp.SupplierId\nJOIN Product p ON sp.ProductId = p.Id\nWHERE p.Type = 'raw-material'\n  AND p.SKU LIKE '%' || REPLACE(LOWER('{{ $json.ingredient_name }}'), ' ', '-') || '%'"
+      },
+      "id": "33333333-3333-3333-3333-333333333333",
+      "name": "Query Suppliers",
+      "type": "n8n-nodes-base.sqlite",
+      "typeVersion": 1,
+      "position": [620, 300],
+      "notes": "Requires a SQLite credential pointing to data/db.sqlite"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the Gemini request body for each supplier item\nconst ingredientName = $('Set Ingredient').first().json.ingredient_name;\nconst supplierName = $input.item.json.supplier_name;\nconst sku = $input.item.json.sku;\nconst supplierId = $input.item.json.supplier_id;\n\nconst prompt = `You are a procurement research assistant for a CPG supply chain AI.\n\nFind the official product page or technical documentation for the ingredient '${ingredientName}' sold by the supplier '${supplierName}'.\n\nReturn EXACTLY this structure:\n1. PRODUCT_URL: The most likely product page URL on their website\n2. DOCS: Any technical or safety document URLs (TDS, SDS, COA, specification sheet)\n3. SUMMARY: A 2-3 sentence summary of what you found, including any quality certifications or compliance notes\n\nIf you cannot find specific results for this supplier and ingredient combination, clearly state that.`;\n\nreturn {\n  json: {\n    supplier_id: supplierId,\n    supplier_name: supplierName,\n    sku,\n    ingredient_name: ingredientName,\n    gemini_body: {\n      contents: [{\n        role: 'user',\n        parts: [{ text: prompt }]\n      }],\n      tools: [{ google_search: {} }],\n      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }\n    }\n  }\n};"
+      },
+      "id": "44444444-4444-4444-4444-444444444444",
+      "name": "Build Gemini Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "queryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.gemini_body }}",
+        "options": {}
+      },
+      "id": "55555555-5555-5555-5555-555555555555",
+      "name": "Gemini Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1060, 300],
+      "notes": "Set up a 'Query Auth' credential with name=key, value=YOUR_GEMINI_API_KEY"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "out-ingredient",
+              "name": "ingredient",
+              "value": "={{ $('Build Gemini Prompt').item.json.ingredient_name }}",
+              "type": "string"
+            },
+            {
+              "id": "out-supplier",
+              "name": "supplier_name",
+              "value": "={{ $('Build Gemini Prompt').item.json.supplier_name }}",
+              "type": "string"
+            },
+            {
+              "id": "out-sku",
+              "name": "sku",
+              "value": "={{ $('Build Gemini Prompt').item.json.sku }}",
+              "type": "string"
+            },
+            {
+              "id": "out-text",
+              "name": "gemini_response",
+              "value": "={{ $json.candidates[0].content.parts[0].text }}",
+              "type": "string"
+            },
+            {
+              "id": "out-sources",
+              "name": "grounding_sources",
+              "value": "={{ ($json.candidates[0].groundingMetadata?.groundingChunks ?? []).map(c => c.web?.uri).filter(Boolean) }}",
+              "type": "array"
+            },
+            {
+              "id": "out-search-queries",
+              "name": "search_queries_used",
+              "value": "={{ ($json.candidates[0].groundingMetadata?.webSearchQueries ?? []) }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "66666666-6666-6666-6666-666666666666",
+      "name": "Extract Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1280, 300]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [{ "node": "Set Ingredient", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Ingredient": {
+      "main": [
+        [{ "node": "Query Suppliers", "type": "main", "index": 0 }]
+      ]
+    },
+    "Query Suppliers": {
+      "main": [
+        [{ "node": "Build Gemini Prompt", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Gemini Prompt": {
+      "main": [
+        [{ "node": "Gemini Research", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gemini Research": {
+      "main": [
+        [{ "node": "Extract Result", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
