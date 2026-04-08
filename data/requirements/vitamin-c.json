@@ -1,0 +1,15 @@
+{
+  "ingredient": "vitamin c",
+  "requirements": [
+    {"field": "purity", "operator": ">=", "value": "99", "unit": "%", "priority": "critical"},
+    {"field": "grade", "operator": "in", "value": ["USP", "FCC", "EP", "BP"], "priority": "critical"},
+    {"field": "form", "operator": "in", "value": ["powder", "crystalline"], "priority": "major"},
+    {"field": "heavy_metals", "operator": "<=", "value": "10", "unit": "ppm", "priority": "critical"},
+    {"field": "lead", "operator": "<=", "value": "2", "unit": "ppm", "priority": "critical"},
+    {"field": "residue_on_ignition", "operator": "<=", "value": "0.1", "unit": "%", "priority": "major"},
+    {"field": "specific_rotation", "operator": "range", "value": ["+20.5", "+21.5"], "unit": "degrees", "priority": "major"},
+    {"field": "ph", "operator": "range", "value": ["2.1", "2.6"], "unit": "", "priority": "minor"},
+    {"field": "gmp_certified", "operator": "==", "value": true, "priority": "major"},
+    {"field": "non_gmo", "operator": "==", "value": true, "priority": "minor"}
+  ]
+}
