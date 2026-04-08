@@ -12,9 +12,13 @@ Usage:
 
 from __future__ import annotations
 
+import re
 import sys
 import time
 from pathlib import Path
+from urllib.parse import urlparse
+
+import httpx
 
 # Ensure package is importable when running from repo root
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -65,7 +69,7 @@ INGREDIENTS = [
             product_category="beverage",
             grade_hint="food-grade",
         ),
-        runtime=RuntimeConfig(max_candidates=5, ranking_enabled=True),
+        runtime=RuntimeConfig(max_candidates=10, ranking_enabled=True),
     ),
     CompetitorInput(
         ingredient=IngredientRef(
@@ -79,7 +83,7 @@ INGREDIENTS = [
             product_category="sports nutrition",
             grade_hint="food-grade",
         ),
-        runtime=RuntimeConfig(max_candidates=5, ranking_enabled=True),
+        runtime=RuntimeConfig(max_candidates=10, ranking_enabled=True),
     ),
     CompetitorInput(
         ingredient=IngredientRef(
@@ -93,7 +97,7 @@ INGREDIENTS = [
             product_category="dietary supplement",
             grade_hint="pharmaceutical-grade",
         ),
-        runtime=RuntimeConfig(max_candidates=5, ranking_enabled=True),
+        runtime=RuntimeConfig(max_candidates=10, ranking_enabled=True),
     ),
 ]
 
@@ -196,12 +200,12 @@ def print_candidate(c, idx: int):
 
     # Offers
     for offer in c.matched_offers[:2]:
-        print(f"       {BLUE}-> {offer.offer_label}{RESET}")
+        label = offer.offer_label
+        if len(label) > 80:
+            label = label[:77] + "..."
+        print(f"       {BLUE}-> {label}{RESET}")
         if offer.source_url:
-            url = offer.source_url
-            if len(url) > 65:
-                url = url[:62] + "..."
-            print(f"          {DIM}{url}{RESET}")
+            print(f"          {DIM}{offer.source_url}{RESET}")
 
     if len(c.matched_offers) > 2:
         print(f"       {DIM}... +{len(c.matched_offers) - 2} more offers{RESET}")
@@ -225,6 +229,72 @@ def print_footer(total_time: float, total_candidates: int):
         f"in {total_time:.1f}s{RESET}"
     )
     print(f"{BOLD}{CYAN}{'=' * 70}{RESET}")
+    print()
+
+
+# ── PDF download ─────────────────────────────────────────────────────────────
+
+DEMO_DIR = Path(__file__).resolve().parent / "demo_output"
+
+
+def _sanitize_filename(name: str) -> str:
+    """Turn a supplier name into a safe filesystem name."""
+    return re.sub(r"[^\w\-.]", "_", name).strip("_")[:60]
+
+
+def download_pdfs(output: CompetitorOutput, ingredient_name: str) -> list:
+    """Download any PDF URLs found in candidate offers. Returns list of saved paths."""
+    folder = DEMO_DIR / _sanitize_filename(ingredient_name)
+    downloaded = []
+
+    pdf_urls = []
+    for candidate in output.candidates:
+        for offer in candidate.matched_offers:
+            url = offer.source_url or ""
+            if url.lower().endswith(".pdf"):
+                pdf_urls.append((candidate.supplier.supplier_name, url))
+
+    if not pdf_urls:
+        return downloaded
+
+    folder.mkdir(parents=True, exist_ok=True)
+
+    for supplier_name, url in pdf_urls:
+        try:
+            # Build filename from supplier + URL basename
+            url_basename = Path(urlparse(url).path).name or "document.pdf"
+            filename = f"{_sanitize_filename(supplier_name)}_{url_basename}"
+            dest = folder / filename
+
+            if dest.exists():
+                downloaded.append(dest)
+                continue
+
+            resp = httpx.get(url, timeout=20.0, follow_redirects=True)
+            resp.raise_for_status()
+
+            # Verify it's actually a PDF (check content-type or magic bytes)
+            content_type = resp.headers.get("content-type", "")
+            if b"%PDF" in resp.content[:10] or "pdf" in content_type.lower():
+                dest.write_bytes(resp.content)
+                downloaded.append(dest)
+            else:
+                # Not actually a PDF despite the URL
+                pass
+        except Exception:
+            pass  # skip failed downloads silently
+
+    return downloaded
+
+
+def print_pdf_downloads(paths: list, ingredient_name: str):
+    if not paths:
+        print(f"  {DIM}No PDFs found for {ingredient_name}{RESET}")
+    else:
+        print(f"  {GREEN}Downloaded {len(paths)} PDF(s) for {ingredient_name}:{RESET}")
+        for p in paths:
+            size_kb = p.stat().st_size / 1024
+            print(f"    {GREEN}>{RESET} {p.name} {DIM}({size_kb:.0f} KB){RESET}")
     print()
 
 
@@ -287,12 +357,23 @@ def main():
             print(f"  {RED}No candidates found.{RESET}")
             print()
 
+        # Download PDFs if available (skip in mock mode)
+        if not mock_mode:
+            pdfs = download_pdfs(output, inp.ingredient.canonical_name)
+            print_pdf_downloads(pdfs, inp.ingredient.canonical_name)
+
         print_warnings(output)
         print(f"  {DIM}Completed in {elapsed:.1f}s{RESET}")
         print()
 
     total_time = time.monotonic() - t_start
     print_footer(total_time, total_candidates)
+
+    if not mock_mode and DEMO_DIR.exists():
+        pdf_count = sum(1 for _ in DEMO_DIR.rglob("*.pdf"))
+        if pdf_count:
+            print(f"  {GREEN}PDFs saved to: {DEMO_DIR}{RESET}")
+            print()
 
 
 if __name__ == "__main__":
