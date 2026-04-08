@@ -1,14 +1,8 @@
 {
   "functions": {
-    "backend/**/*.py": {
+    "api/**/*.py": {
       "includeFiles": "src/**",
       "maxDuration": 60
     }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/backend/index.py"
-    }
-  ]
+  }
 }

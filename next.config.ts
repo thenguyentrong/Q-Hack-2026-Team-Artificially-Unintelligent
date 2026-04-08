@@ -10,7 +10,12 @@ const nextConfig: NextConfig = {
         },
       ];
     }
-    return [];
+    return [
+      {
+        source: "/api/:path*",
+        destination: "/api/",
+      },
+    ];
   },
 };
 
