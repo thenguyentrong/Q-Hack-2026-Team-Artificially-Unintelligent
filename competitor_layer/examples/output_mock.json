@@ -1,0 +1,150 @@
+{
+  "schema_version": "1.0",
+  "trace_id": "89e8c779",
+  "ingredient_id": "ING-ASCORBIC-ACID",
+  "search_summary": {
+    "queries_used": [
+      "Ascorbic Acid food grade supplier",
+      "Ascorbic Acid manufacturer",
+      "Vitamin C supplier technical data sheet",
+      "L-Ascorbic Acid supplier technical data sheet",
+      "Ascorbic Acid supplier EU"
+    ],
+    "region_applied": "EU",
+    "ranking_enabled": true,
+    "gemini_enabled": false
+  },
+  "candidates": [
+    {
+      "supplier": {
+        "supplier_id": "SUP-001",
+        "supplier_name": "DSM-Firmenich",
+        "supplier_type": "manufacturer",
+        "country": "NL",
+        "website": "https://www.dsm-firmenich.com"
+      },
+      "matched_offers": [
+        {
+          "offer_label": "Ascorbic Acid Food Grade",
+          "matched_name": "Ascorbic Acid",
+          "source_url": "https://www.dsm-firmenich.com/ingredients/ascorbic-acid"
+        }
+      ],
+      "evidence_hints": {
+        "website_found": true,
+        "product_page_found": true,
+        "pdf_found": true,
+        "technical_doc_likely": true
+      },
+      "candidate_confidence": "high",
+      "rank": 1,
+      "reason": "Major manufacturer of ascorbic acid with extensive food-grade documentation"
+    },
+    {
+      "supplier": {
+        "supplier_id": "SUP-002",
+        "supplier_name": "CSPC Pharma",
+        "supplier_type": "manufacturer",
+        "country": "CN",
+        "website": "https://www.cspc.com.hk"
+      },
+      "matched_offers": [
+        {
+          "offer_label": "Ascorbic Acid USP/FCC Grade",
+          "matched_name": "Ascorbic Acid",
+          "source_url": "https://www.cspc.com.hk/product/vitamin-c"
+        }
+      ],
+      "evidence_hints": {
+        "website_found": true,
+        "product_page_found": true,
+        "pdf_found": true,
+        "technical_doc_likely": true
+      },
+      "candidate_confidence": "high",
+      "rank": 2,
+      "reason": "One of the world's largest ascorbic acid producers, food and pharma grade"
+    },
+    {
+      "supplier": {
+        "supplier_id": "SUP-003",
+        "supplier_name": "Prinova USA",
+        "supplier_type": "distributor",
+        "country": "US",
+        "website": "https://www.prinovaglobal.com"
+      },
+      "matched_offers": [
+        {
+          "offer_label": "Ascorbic Acid",
+          "matched_name": "Ascorbic Acid",
+          "source_url": "https://www.prinovaglobal.com/ingredients/vitamins"
+        }
+      ],
+      "evidence_hints": {
+        "website_found": true,
+        "product_page_found": true,
+        "pdf_found": false,
+        "technical_doc_likely": false
+      },
+      "candidate_confidence": "medium",
+      "rank": 3,
+      "reason": "Known distributor in database, ascorbic acid in product catalog"
+    },
+    {
+      "supplier": {
+        "supplier_id": "SUP-004",
+        "supplier_name": "Northeast Pharma",
+        "supplier_type": "manufacturer",
+        "country": "CN",
+        "website": "https://www.nepharm.com"
+      },
+      "matched_offers": [
+        {
+          "offer_label": "Ascorbic Acid Food Grade",
+          "matched_name": "Ascorbic Acid",
+          "source_url": "https://www.nepharm.com/products/vitamin-c"
+        }
+      ],
+      "evidence_hints": {
+        "website_found": true,
+        "product_page_found": true,
+        "pdf_found": false,
+        "technical_doc_likely": true
+      },
+      "candidate_confidence": "medium",
+      "rank": 4,
+      "reason": "Established vitamin C manufacturer, some food-grade evidence found"
+    },
+    {
+      "supplier": {
+        "supplier_id": "SUP-005",
+        "supplier_name": "PureBulk",
+        "supplier_type": "reseller",
+        "country": "US",
+        "website": "https://www.purebulk.com"
+      },
+      "matched_offers": [
+        {
+          "offer_label": "Ascorbic Acid Powder",
+          "matched_name": "Ascorbic Acid",
+          "source_url": "https://www.purebulk.com/products/ascorbic-acid"
+        }
+      ],
+      "evidence_hints": {
+        "website_found": true,
+        "product_page_found": true,
+        "pdf_found": false,
+        "technical_doc_likely": false
+      },
+      "candidate_confidence": "low",
+      "rank": 5,
+      "reason": "Reseller in database, limited technical documentation available"
+    }
+  ],
+  "warnings": [],
+  "stats": {
+    "raw_results_seen": 42,
+    "deduped_suppliers": 8,
+    "returned_candidates": 5
+  }
+}
