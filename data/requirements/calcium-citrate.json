@@ -1,0 +1,16 @@
+{
+  "ingredient": "calcium citrate",
+  "requirements": [
+    {"field": "purity", "operator": ">=", "value": "98", "unit": "%", "priority": "critical"},
+    {"field": "grade", "operator": "in", "value": ["USP", "FCC", "Food Grade"], "priority": "critical"},
+    {"field": "form", "operator": "in", "value": ["powder", "granular"], "priority": "major"},
+    {"field": "heavy_metals", "operator": "<=", "value": "20", "unit": "ppm", "priority": "critical"},
+    {"field": "lead", "operator": "<=", "value": "0.5", "unit": "ppm", "priority": "critical"},
+    {"field": "arsenic", "operator": "<=", "value": "1.5", "unit": "ppm", "priority": "critical"},
+    {"field": "mesh_size", "operator": ">=", "value": "80", "unit": "mesh", "priority": "minor"},
+    {"field": "loss_on_drying", "operator": "<=", "value": "12", "unit": "%", "priority": "major"},
+    {"field": "gmp_certified", "operator": "==", "value": true, "priority": "major"},
+    {"field": "kosher", "operator": "==", "value": true, "priority": "minor"},
+    {"field": "halal", "operator": "==", "value": true, "priority": "minor"}
+  ]
+}
