@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sqlite3 \"c:/Users/asmam/Q-hackathon/Q-Hack-2026-Team-Artificially-Unintelligent/data/db.sqlite\" \".schema\")",
+      "Bash(sqlite3 \"c:/Users/asmam/Q-hackathon/Q-Hack-2026-Team-Artificially-Unintelligent/data/db.sqlite\" \"SELECT * FROM Supplier LIMIT 5; SELECT * FROM Product LIMIT 5; SELECT * FROM Supplier_Product LIMIT 5;\")",
+      "Bash(sqlite3 \"c:/Users/asmam/Q-hackathon/Q-Hack-2026-Team-Artificially-Unintelligent/data/db.sqlite\" \"SELECT DISTINCT s.Name, p.SKU FROM Supplier s JOIN Supplier_Product sp ON s.Id=sp.SupplierId JOIN Product p ON sp.ProductId=p.Id WHERE p.Type='raw-material' AND p.SKU LIKE '%calcium-citrate%' LIMIT 5;\")"
+    ]
+  }
+}
