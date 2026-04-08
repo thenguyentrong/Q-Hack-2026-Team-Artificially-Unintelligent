@@ -48,4 +48,4 @@ __pycache__/
 *.egg-info/
 dist/
 
-/competitor_layer/demo_output/*
+src/competitor_layer/demo_output/*
