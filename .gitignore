@@ -29,6 +29,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files
+.env
 .env*
 *.env
 
@@ -41,5 +42,8 @@ next-env.d.ts
 
 # python
 .venv/
+__pycache__/
 *__pycache__/
 .cursor/
+*.egg-info/
+dist/
