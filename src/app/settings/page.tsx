@@ -16,8 +16,9 @@ export default function SettingsPage() {
       try {
         data = await res.json();
       } catch (parseError) {
-        // If Vercel or local Proxy throws a 504 HTML page due to dead backend or timeouts
-        throw new Error(`Server returned a non-JSON framework error (Status: ${res.status}). Verify your FastAPI backend is actually running natively!`);
+        // If Vercel or local Proxy throws a 504/500 HTML page due to dead backend or timeouts, fetch the raw text
+        const textPayload = await res.text();
+        throw new Error(`Server returned a non-JSON framework error (Status: ${res.status}). Body: ${textPayload.substring(0, 500)}`);
       }
       
       if (!res.ok && data.error) {
