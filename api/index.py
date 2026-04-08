@@ -48,8 +48,8 @@ async def layer1_test(ingredient: str = "Ascorbic Acid"):
         }
         result = run_requirement_layer(input_data)
         return result
-    except Exception as e:
-        return {"error": "Layer 1 Engine Failure", "detail": str(e)}
+    except BaseException as e:
+        return {"error": "Layer 1 Engine Failure", "detail": str(e), "note": "If you see a SystemExit, Vercel is missing your GEMINI_API_KEY environment variable."}
 
 @app.get("/api/layer2")
 async def layer2_test(ingredient: str = "Ascorbic Acid"):
