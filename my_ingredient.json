@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "ingredient": {
+    "ingredient_id": "RM-C28-glycerin-85e43afb",
+    "canonical_name": "Glycerin",
+    "aliases": ["Glycerol", "Glycerine"]
+  },
+  "context": {
+    "product_category": "Personal Care / Cosmetics",
+    "region": "Global"
+  },
+  "baseline_supplier": null
+}
