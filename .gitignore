@@ -47,3 +47,5 @@ __pycache__/
 .cursor/
 *.egg-info/
 dist/
+
+/competitor_layer/demo_output/*
