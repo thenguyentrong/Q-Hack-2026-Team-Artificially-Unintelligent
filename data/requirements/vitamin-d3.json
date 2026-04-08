@@ -1,0 +1,11 @@
+{
+  "ingredient": "vitamin d3",
+  "requirements": [
+    {"field": "purity", "operator": ">=", "value": "97", "unit": "%", "priority": "critical"},
+    {"field": "form", "operator": "in", "value": ["powder", "oil", "crystalline"], "priority": "major"},
+    {"field": "heavy_metals", "operator": "<=", "value": "10", "unit": "ppm", "priority": "critical"},
+    {"field": "grade", "operator": "in", "value": ["USP", "FCC", "Food Grade", "Pharma"], "priority": "critical"},
+    {"field": "gmp_certified", "operator": "==", "value": true, "priority": "major"},
+    {"field": "potency", "operator": "range", "value": ["90", "120"], "unit": "% of label claim", "priority": "critical"}
+  ]
+}
