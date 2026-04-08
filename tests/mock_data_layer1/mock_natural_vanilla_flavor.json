@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0",
+  "ingredient": {
+    "ingredient_id": "ING-NATURAL-VANILLA-FLAVOR",
+    "canonical_name": "Natural Vanilla Flavor",
+    "aliases": ["Vanilla Extract", "Vanilla Bean Extract"]
+  },
+  "context": null,
+  "baseline_supplier": null
+}
