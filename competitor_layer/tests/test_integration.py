@@ -50,7 +50,6 @@ skip_no_gemini = pytest.mark.skipif(
 
 @pytest.mark.integration
 class TestDuckDuckGoSearchLive:
-    @pytest.mark.xfail(reason="DDG TLS 1.3 may fail on Python 3.9 + LibreSSL")
     def test_search_returns_results(self):
         adapter = DuckDuckGoAdapter()
         results = adapter.search("ascorbic acid food grade supplier", max_results=5)
@@ -60,7 +59,6 @@ class TestDuckDuckGoSearchLive:
             assert len(r.title) > 0
             assert r.source_engine == "duckduckgo"
 
-    @pytest.mark.xfail(reason="DDG TLS 1.3 may fail on Python 3.9 + LibreSSL")
     def test_search_with_region(self):
         adapter = DuckDuckGoAdapter()
         results = adapter.search("ascorbic acid manufacturer", max_results=5, region="EU")
