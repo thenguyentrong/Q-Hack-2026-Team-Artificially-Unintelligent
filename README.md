@@ -1,0 +1,1 @@
+# Speherecast Challenge @ Q-Hack 2026 - Team: Artificially Unintelligent
