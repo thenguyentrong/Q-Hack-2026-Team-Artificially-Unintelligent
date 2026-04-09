@@ -49,3 +49,7 @@ __pycache__/
 dist/
 
 src/competitor_layer/demo_output/*
+src/quality_verification_layer/demo_output/*
+specs/*
+spec/*
+logs/*
