@@ -6,5 +6,6 @@
     "api/**/*.py": {
       "includeFiles": "src/**"
     }
-  }
+  },
+  "installCommand": "npm install"
 }
