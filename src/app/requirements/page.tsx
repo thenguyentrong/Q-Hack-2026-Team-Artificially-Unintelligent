@@ -43,13 +43,23 @@ export default function RequirementsPage() {
   }, []);
 
   const runLayer1 = async (ing?: string) => {
-    const target = ing ?? ingredient;
     setStatus("loading");
     setReqs([]);
     setError("");
 
     try {
-      const res = await fetch(`/api/py/layer1?ingredient=${encodeURIComponent(target)}`);
+      const storedData = localStorage.getItem("agnes_preprocessed_data");
+      if (!storedData) {
+        throw new Error("No preprocessed data found. Please start from the Selection page.");
+      }
+
+      const payload = JSON.parse(storedData);
+
+      const res = await fetch(`/api/py/layer1`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
       const text = await res.text();
       const data = JSON.parse(text);
 

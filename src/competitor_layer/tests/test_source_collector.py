@@ -17,7 +17,7 @@ def _config() -> CompetitorConfig:
         gemini_model="gemini-2.5-pro",
         max_candidates=10,
         ranking_enabled=True,
-        google_api_key=None,
+        GEMINI_API_KEY=None,
         google_cse_id=None,
         search_engine="mock",
         search_results_per_query=10,

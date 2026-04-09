@@ -143,11 +143,11 @@ def create_search_adapter(config: CompetitorConfig) -> SearchAdapter:
         return DuckDuckGoAdapter()
 
     if engine in ("google", "auto"):
-        if config.google_api_key and config.google_cse_id:
-            return GoogleSearchAdapter(config.google_api_key, config.google_cse_id)
+        if config.GEMINI_API_KEY and config.google_cse_id:
+            return GoogleSearchAdapter(config.GEMINI_API_KEY, config.google_cse_id)
         if engine == "google":
             raise ValueError(
-                "Google search requested but GOOGLE_API_KEY or GOOGLE_CSE_ID not set"
+                "Google search requested but GEMINI_API_KEY or GOOGLE_CSE_ID not set"
             )
         # auto mode: try duckduckgo, then mock
         try:

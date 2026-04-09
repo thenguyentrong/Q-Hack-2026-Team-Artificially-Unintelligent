@@ -118,7 +118,7 @@ def run_e2e(ingredient_name: str):
         import dataclasses
         cl_config = dataclasses.replace(cl_config, max_candidates=2, search_results_per_query=3)
 
-        if not cl_config.google_api_key or cl_config.google_api_key.startswith("AIzaSyCji") or not cl_config.google_cse_id:
+        if not cl_config.GEMINI_API_KEY or cl_config.GEMINI_API_KEY.startswith("AIzaSyCji") or not cl_config.google_cse_id:
             cl_config = dataclasses.replace(cl_config, search_engine="mock")
 
         cl_input = CompetitorInput(

@@ -13,8 +13,8 @@ from .models import (
 app = FastAPI(title="Preprocessing Layer API")
 
 
-@app.post("/api/v1/preprocess", response_model=MyIngredientOutput)
-async def preprocess_ingredient(input_data: PreprocessingInput):
+@app.post("/api/py/preprocess", response_model=MyIngredientOutput)
+async def preprocess_ingredient_route(input_data: PreprocessingInput):
     # Synchronous Extraction
     parts = input_data.RM_sku.split("-")
     if len(parts) >= 4:
@@ -45,5 +45,5 @@ async def preprocess_ingredient(input_data: PreprocessingInput):
             product_category=category,
             region="Global",
         ),
-        baseline_supplier=supplier,
+        baseline_supplier={"name": supplier} if supplier else None,
     )

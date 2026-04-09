@@ -101,17 +101,40 @@ export default function SelectionPage() {
 
   const selectedProduct = products.find((p) => p.SKU === selectedSku) || null;
 
-  const startAnalysis = (ingredient: string) => {
+  const startAnalysis = async (row: BomComponent, product: Product | null) => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("agnes_ingredient", ingredient);
+      localStorage.setItem("agnes_ingredient", row.name);
       localStorage.setItem("agnes_layer1", "");
       localStorage.setItem("agnes_layer2", "");
       localStorage.setItem("agnes_layer3", "");
       localStorage.setItem("agnes_layer4", "");
       localStorage.removeItem("agnes_manual_override");
       localStorage.removeItem("agnes_e2e_result");
+      
+      try {
+        setToastMsg("Running preprocessing layer...");
+        const res = await fetch("/api/py/preprocess", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            schema_version: "1.0",
+            company_id: product?.Id || 1,
+            company_name: row.rm_company,
+            RM_id: row.rm_sku,
+            RM_sku: row.rm_sku
+          })
+        });
+        
+        if (!res.ok) {
+           throw new Error("Preprocessing failed");
+        }
+        const data = await res.json();
+        localStorage.setItem("agnes_preprocessed_data", JSON.stringify(data));
+        router.push("/requirements");
+      } catch (e: any) {
+        showToast("Error during preprocessing: " + e.message);
+      }
     }
-    router.push("/requirements");
   };
 
   const handleExportBOM = () => {
@@ -400,7 +423,7 @@ export default function SelectionPage() {
                             <button
                               onClick={() => {
                                 setSelectedIngredient(row);
-                                startAnalysis(row.name);
+                                startAnalysis(row, selectedProduct);
                               }}
                               className={`px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-all flex items-center gap-2 ml-auto ${
                                 isPrimary || isSelected
@@ -465,7 +488,7 @@ export default function SelectionPage() {
                   <strong>{primaryComponent.name}</strong> is the primary
                   component for {selectedProduct?.company}. Click{" "}
                   <button
-                    onClick={() => startAnalysis(primaryComponent.name)}
+                    onClick={() => startAnalysis(primaryComponent, selectedProduct)}
                     className="text-primary font-bold underline decoration-primary/40 hover:decoration-primary"
                   >
                     Find Substitute

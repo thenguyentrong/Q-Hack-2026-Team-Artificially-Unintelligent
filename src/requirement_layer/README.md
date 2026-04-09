@@ -105,7 +105,7 @@ cp src/requirement_layer/.env.example .env
 
 | Variable | Required | Description |
 |---|---|---|
-| `GOOGLE_API_KEY` | Yes | Google AI Studio key – powers the Gemini agent |
+| `GEMINI_API_KEY` | Yes | Google AI Studio key – powers the Gemini agent |
 | `TAVILY_API_KEY` | No | Enables web search fallback |
 | `MCP_SERVER_URL` | No | URL of an MCP regulatory standards server |
 | `MCP_TOOL_NAME` | No | Tool name on MCP server (default: `search`) |

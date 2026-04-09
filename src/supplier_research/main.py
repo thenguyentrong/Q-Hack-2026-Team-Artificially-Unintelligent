@@ -14,7 +14,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 def _check_env() -> None:
-    missing = [k for k in ("GOOGLE_API_KEY", "TAVILY_API_KEY") if not os.getenv(k)]
+    missing = [k for k in ("GEMINI_API_KEY", "TAVILY_API_KEY") if not os.getenv(k)]
     if missing:
         print(f"ERROR: missing environment variables: {', '.join(missing)}", file=sys.stderr)
         print("Copy .env.example to .env and fill in your keys.", file=sys.stderr)

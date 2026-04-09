@@ -5,6 +5,12 @@ import json
 from pathlib import Path
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+import os
+from dotenv import load_dotenv, find_dotenv
+
+# Load env variables globally
+load_dotenv(find_dotenv('.env.local'))
+load_dotenv()
 
 # Add the project root to sys path so we can import src and competitor_layer
 base_dir = Path(__file__).parent.parent
@@ -42,20 +48,15 @@ def root():
 def health():
     return {"status": "healthy"}
 
-@app.get("/api/py/layer1")
-async def layer1_test(ingredient: str = "Ascorbic Acid"):
+from src.preprocessing_layer.main import preprocess_ingredient_route
+from src.preprocessing_layer.models import PreprocessingInput, MyIngredientOutput
+@app.post("/api/py/preprocess", response_model=MyIngredientOutput)
+async def preprocess_endpoint(input_data: PreprocessingInput):
+    return await preprocess_ingredient_route(input_data)
+
+@app.post("/api/py/layer1")
+async def layer1_test(input_data: MyIngredientOutput):
     try:
-        input_data = {
-            "ingredient": {
-                "ingredient_id": "ING-001",
-                "canonical_name": ingredient,
-                "aliases": ["Vitamin C"]
-            },
-            "context": {
-                "end_product_category": "Food and Beverage",
-                "region": "Global"
-            }
-        }
         from dotenv import load_dotenv, find_dotenv
         load_dotenv(find_dotenv('.env.local'))
         load_dotenv()
@@ -65,7 +66,7 @@ async def layer1_test(ingredient: str = "Ascorbic Acid"):
         from src.requirement_layer.requirement_engine import RequirementEngine
 
         processor = InputProcessor()
-        payload = processor.load_from_dict(input_data)
+        payload = processor.load_from_dict(input_data.model_dump())
 
         try:
             engine = RequirementEngine(model="gemini-2.5-flash")
@@ -105,7 +106,7 @@ async def layer2_test(ingredient: str = "Ascorbic Acid"):
 
         config = load_config()
         import dataclasses
-        if not config.google_api_key or config.google_api_key.startswith("AIzaSyCji") or not config.google_cse_id:
+        if not config.GEMINI_API_KEY or config.GEMINI_API_KEY.startswith("AIzaSyCji") or not config.google_cse_id:
             config = dataclasses.replace(config, search_engine="mock")
 
         result_str = run_from_json(json.dumps(input_data), config)
@@ -204,7 +205,7 @@ async def health_keys():
         load_dotenv()
 
         gemini_key = os.environ.get("GEMINI_API_KEY")
-        google_key = os.environ.get("GOOGLE_API_KEY")
+        google_key = os.environ.get("GEMINI_API_KEY")
         google_cse = os.environ.get("GOOGLE_CSE_ID")
 
         gemini_status = "Missing"

@@ -21,4 +21,4 @@ class MyIngredientOutput(BaseModel):
     schema_version: str
     ingredient: IngredientOutput
     context: ContextOutput
-    baseline_supplier: Optional[str] = None
+    baseline_supplier: Optional[dict] = None

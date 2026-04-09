@@ -16,7 +16,7 @@ class CompetitorConfig:
     gemini_model: str
     max_candidates: int
     ranking_enabled: bool
-    google_api_key: Optional[str]
+    GEMINI_API_KEY: Optional[str]
     google_cse_id: Optional[str]
     search_engine: str
     search_results_per_query: int
@@ -43,7 +43,7 @@ def load_config(env_file: Optional[str] = None) -> CompetitorConfig:
             "COMPETITOR_RANKING_ENABLED", "true"
         ).lower()
         in ("true", "1", "yes"),
-        google_api_key=os.environ.get("GOOGLE_API_KEY") or None,
+        GEMINI_API_KEY=os.environ.get("GEMINI_API_KEY") or None,
         google_cse_id=os.environ.get("GOOGLE_CSE_ID") or None,
         search_engine=os.environ.get("COMPETITOR_SEARCH_ENGINE", "auto"),
         search_results_per_query=int(
