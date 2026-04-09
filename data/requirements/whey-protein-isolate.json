@@ -1,0 +1,14 @@
+{
+  "ingredient": "whey protein isolate",
+  "requirements": [
+    {"field": "purity", "operator": ">=", "value": "90", "unit": "%", "priority": "critical"},
+    {"field": "grade", "operator": "in", "value": ["Food Grade", "USP", "Instantized"], "priority": "critical"},
+    {"field": "heavy_metals", "operator": "<=", "value": "10", "unit": "ppm", "priority": "critical"},
+    {"field": "lead", "operator": "<=", "value": "1", "unit": "ppm", "priority": "critical"},
+    {"field": "form", "operator": "in", "value": ["powder", "instantized powder"], "priority": "major"},
+    {"field": "moisture", "operator": "<=", "value": "6", "unit": "%", "priority": "major"},
+    {"field": "gmp_certified", "operator": "==", "value": true, "priority": "major"},
+    {"field": "kosher", "operator": "==", "value": true, "priority": "minor"},
+    {"field": "shelf_life", "operator": ">=", "value": "18", "unit": "months", "priority": "minor"}
+  ]
+}

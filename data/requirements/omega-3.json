@@ -1,0 +1,14 @@
+{
+  "ingredient": "omega-3 fish oil",
+  "requirements": [
+    {"field": "purity", "operator": ">=", "value": "60", "unit": "%", "priority": "critical"},
+    {"field": "grade", "operator": "in", "value": ["Pharma", "Food Grade", "USP", "Ph. Eur."], "priority": "critical"},
+    {"field": "heavy_metals", "operator": "<=", "value": "10", "unit": "ppm", "priority": "critical"},
+    {"field": "lead", "operator": "<=", "value": "0.1", "unit": "ppm", "priority": "critical"},
+    {"field": "arsenic", "operator": "<=", "value": "0.1", "unit": "ppm", "priority": "critical"},
+    {"field": "mercury", "operator": "<=", "value": "0.1", "unit": "ppm", "priority": "critical"},
+    {"field": "form", "operator": "in", "value": ["oil", "softgel", "liquid", "concentrate"], "priority": "major"},
+    {"field": "gmp_certified", "operator": "==", "value": true, "priority": "major"},
+    {"field": "shelf_life", "operator": ">=", "value": "18", "unit": "months", "priority": "minor"}
+  ]
+}
