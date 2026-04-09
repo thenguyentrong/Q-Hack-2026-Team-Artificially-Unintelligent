@@ -113,15 +113,15 @@ def show_layer2_results(competitors: list, db_suppliers: list, ingredient_name: 
     console.print()
 
 
-def show_layer3_results(output, requirements: list):
+def show_layer3_results(output, requirements: list, names: dict[str, str] = None):
     """Display Layer 3 verification results for all suppliers."""
     for sa in output.supplier_assessments:
-        _show_supplier_assessment(sa)
+        _show_supplier_assessment(sa, names)
 
     console.print()
 
 
-def _show_supplier_assessment(sa):
+def _show_supplier_assessment(sa, names: dict[str, str] = None):
     """Display one supplier's verification result as a panel."""
     status = sa.overall_status
     status_style = STATUS_COLORS.get(status, "dim")
@@ -165,9 +165,10 @@ def _show_supplier_assessment(sa):
     content.append(f"Evidence: {retrieved}/{len(sa.evidence_items)} retrieved ({type_str})\n", style="dim")
     content.append(f"Extracted: {len(sa.extracted_attributes)} fields\n", style="dim")
 
+    display_name = (names or {}).get(sa.supplier_id, sa.supplier_id)
     console.print(Panel(
         content,
-        title=f"[bold]{sa.supplier_id}[/]",
+        title=f"[bold]{display_name}[/] [dim]({sa.supplier_id})[/]",
         border_style="blue",
         width=85,
     ))
@@ -182,7 +183,7 @@ def _show_supplier_assessment(sa):
     console.print()
 
 
-def show_final_ranking(ranked: list, ingredient_name: str):
+def show_final_ranking(ranked: list, ingredient_name: str, names: dict[str, str] = None):
     """Display the final supplier ranking table."""
     table = Table(
         title=f"Supplier Quality Ranking: {ingredient_name}",
@@ -220,7 +221,7 @@ def show_final_ranking(ranked: list, ingredient_name: str):
         fail_style = "bold red" if d["fails"] > 0 else "green"
         unk_style = "yellow" if d["unknowns"] > 5 else "dim"
 
-        name = sa.supplier_id
+        name = (names or {}).get(sa.supplier_id, sa.supplier_id)
         if len(name) > 25:
             name = name[:22] + "..."
 

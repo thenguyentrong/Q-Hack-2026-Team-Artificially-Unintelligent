@@ -715,12 +715,18 @@ def main():
             if sa.overall_status not in ("processing_error", "insufficient_evidence")
         ])
 
+        # Build supplier id → name map for display
+        supplier_names = {
+            s.supplier.supplier_id: s.supplier.supplier_name
+            for s in all_suppliers
+        }
+
         # Show Layer 3 results (all suppliers)
-        show_layer3_results(output, requirements)
+        show_layer3_results(output, requirements, names=supplier_names)
 
         # Show final ranking
         ranked = _rank_suppliers(output.supplier_assessments, requirements)
-        show_final_ranking(ranked, ingredient.canonical_name)
+        show_final_ranking(ranked, ingredient.canonical_name, names=supplier_names)
 
         console.print(f"  [dim]Completed in {elapsed:.0f}s[/]")
         console.print()
