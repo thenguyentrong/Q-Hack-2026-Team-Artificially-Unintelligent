@@ -50,3 +50,8 @@ dist/
 
 src/competitor_layer/demo_output/*
 .vercel
+
+src/quality_verification_layer/demo_output/*
+specs/*
+spec/*
+logs/*
