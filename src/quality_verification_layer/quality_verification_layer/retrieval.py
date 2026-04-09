@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from io import BytesIO
 from typing import List, Optional, Tuple
 
-import httpx
+from curl_cffi import requests as cffi_requests
 
 from .id_generator import QualityIdGenerator
 from .schemas import (
@@ -21,16 +21,6 @@ from .schemas import (
 )
 
 logger = logging.getLogger(__name__)
-
-_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/125.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/pdf,*/*;q=0.8",
-}
-
 
 class FetchedSource:
     """Internal representation of a fetched URL's content."""
@@ -47,10 +37,12 @@ class FetchedSource:
         self.evidence_id = evidence_id
 
 
-def _fetch_url(url: str, client: httpx.Client, timeout: int = 20) -> FetchedSource:
-    """Fetch a single URL. Returns extracted text or an error marker."""
+def _fetch_url(url: str, timeout: int = 20) -> FetchedSource:
+    """Fetch a single URL using browser-impersonating TLS. Returns extracted text."""
     try:
-        resp = client.get(url, timeout=timeout, follow_redirects=True)
+        resp = cffi_requests.get(
+            url, impersonate="chrome", timeout=timeout, allow_redirects=True,
+        )
         if resp.status_code >= 400:
             return FetchedSource(url, "", f"[HTTP {resp.status_code}]", ok=False)
 
@@ -155,25 +147,23 @@ def retrieve_evidence(
     evidence_items: List[EvidenceItem] = []
     fetched_sources: List[FetchedSource] = []
 
-    from .progress import status
-    status(f"Fetching {len(urls)} URL(s)...")
+    print(f"       Fetching {len(urls)} URL(s)...", flush=True)
 
-    with httpx.Client(headers=_HEADERS) as client:
-        for url in urls:
-            evid_id = id_gen.next_evidence_id()
-            source = _fetch_url(url, client, timeout=fetch_timeout)
-            source.evidence_id = evid_id
+    for url in urls:
+        evid_id = id_gen.next_evidence_id()
+        source = _fetch_url(url, timeout=fetch_timeout)
+        source.evidence_id = evid_id
 
-            status = _status_from_fetch(source)
-            evidence_items.append(
-                EvidenceItem(
-                    evidence_id=evid_id,
-                    source_url=url,
-                    status=status,
-                    retrieved_at=now,
-                )
+        ev_status = _status_from_fetch(source)
+        evidence_items.append(
+            EvidenceItem(
+                evidence_id=evid_id,
+                source_url=url,
+                status=ev_status,
+                retrieved_at=now,
             )
-            fetched_sources.append(source)
+        )
+        fetched_sources.append(source)
 
     ok_count = sum(1 for s in fetched_sources if s.ok)
     logger.info(
