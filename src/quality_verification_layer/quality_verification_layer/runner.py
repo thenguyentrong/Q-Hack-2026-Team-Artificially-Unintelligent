@@ -43,10 +43,16 @@ def run_quality_verification(
 
     gemini = create_gemini_client(config.gemini_api_key, config.gemini_model)
 
+    total = len(input_data.candidate_suppliers)
     assessments = []
-    for candidate in input_data.candidate_suppliers:
+    for i, candidate in enumerate(input_data.candidate_suppliers, 1):
         supplier_id = candidate.supplier.supplier_id
+        supplier_name = candidate.supplier.supplier_name
         logger.info("Processing supplier %s", supplier_id)
+        print(
+            f"  [{i}/{total}] Verifying {supplier_name} ({supplier_id})...",
+            flush=True,
+        )
 
         try:
             assessment = _verify_one_supplier(
@@ -79,13 +85,15 @@ def _verify_one_supplier(candidate, input_data, config, gemini_client):
     supplier_id = candidate.supplier.supplier_id
     id_gen = QualityIdGenerator(supplier_id)
 
-    # 1. Retrieve evidence
+    # 1. Retrieve evidence (searches if no source_urls provided)
     evidence_items, fetched_sources = retrieve_evidence(
         candidate=candidate,
         ingredient=input_data.ingredient,
         id_gen=id_gen,
         run_config=input_data.run_config,
         fetch_timeout=config.fetch_timeout,
+        search_delay=config.search_delay,
+        search_results_per_query=config.search_results_per_query,
     )
 
     # 2. Classify sources
@@ -94,6 +102,9 @@ def _verify_one_supplier(candidate, input_data, config, gemini_client):
     )
 
     # 3. Extract attributes via Gemini
+    ok_count = sum(1 for s in fetched_sources if s.ok)
+    print(f"       {ok_count}/{len(fetched_sources)} sources accessible, extracting via Gemini...", flush=True)
+    req_fields = [r.field_name for r in input_data.requirements]
     if gemini_client:
         attributes = extract_attributes_with_gemini(
             ingredient=input_data.ingredient.canonical_name,
@@ -102,6 +113,7 @@ def _verify_one_supplier(candidate, input_data, config, gemini_client):
             id_gen=id_gen,
             gemini_client=gemini_client,
             rate_limit_delay=config.rate_limit_delay,
+            requirement_fields=req_fields,
         )
     else:
         attributes = []

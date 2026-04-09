@@ -64,11 +64,33 @@ assay_percent, loss_on_drying_percent, heavy_metals_ppm, lead_ppm, arsenic_ppm, 
 
 range, minimum, maximum, enum_match, boolean_required, free_text_reference
 
+## Live Demo
+
+The demo runs the full cross-layer pipeline: discovers competitors (Layer 2), loads DB suppliers, searches for evidence (TDS/COA/PDFs), extracts quality data via Gemini, and verifies against requirements. Only high-confidence results are shown. PDFs are saved to `demo_output/`.
+
+```bash
+# All 3 ingredients (Vitamin C, Whey Protein Isolate, Omega-3)
+python demo.py
+
+# Single ingredient
+python demo.py -i vitc      # Vitamin C
+python demo.py -i whey      # Whey Protein Isolate
+python demo.py -i omega     # Omega-3 Fish Oil
+
+# DB suppliers only (skip competitor discovery — faster)
+python demo.py -i vitc --no-competitors
+```
+
+Requires `GEMINI_API_KEY` in `.env`. Each ingredient takes ~2-5 minutes depending on supplier count.
+
 ## Tests
 
 ```bash
 pip install pytest
 pytest tests/ -v
+
+# E2E live tests (requires GEMINI_API_KEY)
+pytest tests/test_e2e_live.py -v -s -m e2e
 ```
 
 ## Known Limitations

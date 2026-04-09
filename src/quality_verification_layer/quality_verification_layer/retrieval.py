@@ -81,7 +81,7 @@ def _extract_pdf_text(data: bytes) -> str:
     text_parts: List[str] = []
     try:
         with pdfplumber.open(BytesIO(data)) as pdf:
-            for page in pdf.pages[:5]:
+            for page in pdf.pages[:20]:
                 page_text = page.extract_text()
                 if page_text:
                     text_parts.append(page_text)
@@ -110,8 +110,13 @@ def retrieve_evidence(
     id_gen: QualityIdGenerator,
     run_config: Optional[RunConfig] = None,
     fetch_timeout: int = 20,
+    search_delay: float = 1.0,
+    search_results_per_query: int = 5,
 ) -> Tuple[List[EvidenceItem], List[FetchedSource]]:
     """Fetch URLs for a supplier candidate and build EvidenceItem records.
+
+    If no source_urls are provided, actively searches for supplier evidence
+    using DuckDuckGo (TDS, COA, product specs).
 
     Returns (evidence_items, fetched_sources) where fetched_sources carry
     the actual text content for downstream extraction.
@@ -120,6 +125,27 @@ def retrieve_evidence(
 
     # Gather URLs from source_urls and supplier website
     urls: List[str] = list(candidate.source_urls or [])
+
+    # If no URLs provided, actively search for evidence
+    if not urls and search_results_per_query > 0:
+        from .evidence_search import search_supplier_evidence
+
+        logger.info(
+            "No source_urls for %s — searching for evidence",
+            candidate.supplier.supplier_name,
+        )
+        try:
+            searched = search_supplier_evidence(
+                supplier_name=candidate.supplier.supplier_name,
+                ingredient_name=ingredient.canonical_name,
+                aliases=ingredient.aliases,
+                max_results_per_query=search_results_per_query,
+                search_delay=search_delay,
+            )
+            urls.extend(searched)
+        except Exception as e:
+            logger.warning("Evidence search failed for %s: %s", candidate.supplier.supplier_name, e)
+
     if candidate.supplier.website and candidate.supplier.website not in urls:
         urls.append(candidate.supplier.website)
 
@@ -129,8 +155,9 @@ def retrieve_evidence(
     evidence_items: List[EvidenceItem] = []
     fetched_sources: List[FetchedSource] = []
 
-    logger.info(
-        "Fetching %d URL(s) for %s", len(urls), candidate.supplier.supplier_name
+    print(
+        f"       Fetching {len(urls)} URL(s)...",
+        flush=True,
     )
 
     with httpx.Client(headers=_HEADERS) as client:

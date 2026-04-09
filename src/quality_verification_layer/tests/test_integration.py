@@ -31,6 +31,8 @@ def _config() -> QualityVerificationConfig:
         max_evidence_per_supplier=5,
         rate_limit_delay=0.0,
         fetch_timeout=5,
+        search_delay=0.0,
+        search_results_per_query=0,  # disable search in unit tests
     )
 
 

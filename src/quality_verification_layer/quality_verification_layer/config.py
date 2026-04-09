@@ -17,6 +17,8 @@ class QualityVerificationConfig:
     max_evidence_per_supplier: int
     rate_limit_delay: float
     fetch_timeout: int
+    search_delay: float
+    search_results_per_query: int
 
 
 def load_config(env_file: Optional[str] = None) -> QualityVerificationConfig:
@@ -33,4 +35,6 @@ def load_config(env_file: Optional[str] = None) -> QualityVerificationConfig:
         max_evidence_per_supplier=int(os.environ.get("QV_MAX_EVIDENCE_PER_SUPPLIER", "10")),
         rate_limit_delay=float(os.environ.get("QV_RATE_LIMIT_DELAY", "1.0")),
         fetch_timeout=int(os.environ.get("QV_FETCH_TIMEOUT", "20")),
+        search_delay=float(os.environ.get("QV_SEARCH_DELAY", "1.0")),
+        search_results_per_query=int(os.environ.get("QV_SEARCH_RESULTS_PER_QUERY", "5")),
     )

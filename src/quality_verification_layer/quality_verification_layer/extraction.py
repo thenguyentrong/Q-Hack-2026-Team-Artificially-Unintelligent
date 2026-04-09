@@ -15,12 +15,13 @@ logger = logging.getLogger(__name__)
 
 
 def _build_extraction_prompt(
-    ingredient: str, supplier: str, sources: List[FetchedSource]
+    ingredient: str, supplier: str, sources: List[FetchedSource],
+    requirement_fields: Optional[List[str]] = None,
 ) -> str:
     """Build a prompt asking Gemini to extract quality fields from source text."""
     source_blocks: List[str] = []
     sorted_sources = sorted(sources, key=lambda s: (0 if s.content_type == "pdf" else 1))
-    remaining_budget = 8_000
+    remaining_budget = 30_000
 
     for i, src in enumerate(sorted_sources, 1):
         if not src.ok or remaining_budget <= 0:
@@ -32,6 +33,14 @@ def _build_extraction_prompt(
 
     combined = "\n\n---\n\n".join(source_blocks) if source_blocks else "(no accessible sources)"
 
+    priority_section = ""
+    if requirement_fields:
+        fields_str = ", ".join(requirement_fields)
+        priority_section = f"""
+PRIORITY FIELDS (from requirements): {fields_str}
+Make sure to extract these fields first if they appear in the documents.
+"""
+
     return f"""You are a quality-assurance data extraction specialist.
 
 Target ingredient: {ingredient}
@@ -41,6 +50,7 @@ Below are documents fetched from the supplier's website.
 Extract EVERY quality-related field you can find — specifications, purity, assay,
 identity, physical properties, contaminants, heavy metals, microbial limits,
 certifications, allergens, storage, shelf life, regulatory status, etc.
+{priority_section}
 
 IMPORTANT: For each field also rate "source_confidence":
   "high"   = this document is clearly a spec sheet for '{ingredient}' from '{supplier}'
@@ -67,6 +77,7 @@ def extract_attributes_with_gemini(
     id_gen: QualityIdGenerator,
     gemini_client,
     rate_limit_delay: float = 1.0,
+    requirement_fields: Optional[List[str]] = None,
 ) -> List[ExtractedAttribute]:
     """Use Gemini to extract quality fields from fetched source text.
 
@@ -82,7 +93,7 @@ def extract_attributes_with_gemini(
         if s.evidence_id:
             url_to_evid[s.url] = s.evidence_id
 
-    prompt = _build_extraction_prompt(ingredient, supplier, sources)
+    prompt = _build_extraction_prompt(ingredient, supplier, sources, requirement_fields)
 
     time.sleep(rate_limit_delay)
 

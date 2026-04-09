@@ -41,7 +41,9 @@ def collect_sources(
     total_before_dedup = 0
 
     logger.info("Executing %d queries via %s", len(queries), type(adapter).__name__)
+    print(f"    L2 search: {len(queries)} queries via {type(adapter).__name__}", flush=True)
     for i, query in enumerate(queries):
+        print(f"      [{i+1}/{len(queries)}] {query[:65]}...", flush=True)
         try:
             results = adapter.search(
                 query,
