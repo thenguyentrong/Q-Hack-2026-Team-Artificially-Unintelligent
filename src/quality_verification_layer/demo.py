@@ -138,7 +138,7 @@ def _generate_requirements(ingredient: IngredientRef) -> list[RequirementInput]:
                     },
                     "context": {"product_category": "food ingredient"},
                 },
-                model="gemini-3-flash",
+                model="gemini-2.5-flash",
             )
         finally:
             sys.stdout = _old_stdout
@@ -319,7 +319,7 @@ def _get_competitors(ingredient: IngredientRef, max_candidates: int = 10) -> lis
 
         cl_config = CompetitorConfig(
             gemini_api_key=gemini_key,
-            gemini_model="gemini-3-flash",
+            gemini_model="gemini-2.5-flash",
             max_candidates=max_candidates,
             ranking_enabled=True,
             google_api_key=None,
@@ -885,7 +885,7 @@ def main():
 
     from dataclasses import asdict
     d = asdict(config)
-    d["gemini_model"] = "gemini-3-flash"
+    d["gemini_model"] = "gemini-2.5-flash"
     d["search_delay"] = 1.5
     d["search_results_per_query"] = 4
     d["max_evidence_per_supplier"] = 8

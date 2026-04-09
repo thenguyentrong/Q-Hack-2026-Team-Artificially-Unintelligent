@@ -131,11 +131,17 @@ def verify_requirements(
     attributes: List[ExtractedAttribute],
     requirements: List[RequirementInput],
     id_gen: QualityIdGenerator,
+    ingredient_name: str = "",
 ) -> List[VerificationResultItem]:
     """Compare extracted attributes against requirements.
 
+    Normalizes both requirement field names and attribute field names
+    to canonical form before matching.
+
     Returns a list of VerificationResultItem — one per requirement.
     """
+    from .normalization import normalize_field_name
+
     # Build field_name -> best attribute lookup
     attr_by_field: Dict[str, ExtractedAttribute] = {}
     for attr in attributes:
@@ -154,7 +160,19 @@ def verify_requirements(
     results: List[VerificationResultItem] = []
 
     for req in requirements:
-        attr = attr_by_field.get(req.field_name)
+        # Try exact match first, then normalized match
+        req_field = req.field_name
+        attr = attr_by_field.get(req_field)
+        if attr is None:
+            # Normalize requirement field name and retry
+            normalized_req = normalize_field_name(req_field, ingredient_name)
+            attr = attr_by_field.get(normalized_req)
+            if attr is None and normalized_req != req_field:
+                # Also try: maybe extracted field matches the raw req name
+                for fname, a in attr_by_field.items():
+                    if normalize_field_name(fname, ingredient_name) == normalized_req:
+                        attr = a
+                        break
 
         if attr is None:
             results.append(VerificationResultItem(

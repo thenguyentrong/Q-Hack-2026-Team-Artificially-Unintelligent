@@ -5,7 +5,7 @@ Layer 1 – Requirements Layer CLI runner.
 Usage:
   uv run src/requirement_layer/runner.py --input src/requirement_layer/mock_data/mock_ascorbic_acid.json
   uv run src/requirement_layer/runner.py --input src/requirement_layer/mock_data/mock_citric_acid.json --output out.json
-  uv run src/requirement_layer/runner.py --input src/requirement_layer/mock_data/mock_natural_vanilla_flavor.json --model gemini-3-flash-preview
+  uv run src/requirement_layer/runner.py --input src/requirement_layer/mock_data/mock_natural_vanilla_flavor.json --model gemini-2.5-flash-preview
 
 Environment variables:
   GEMINI_API_KEY   (required – Google AI Studio key)
@@ -40,7 +40,7 @@ logger = logging.getLogger("layer1.runner")
 def run(
     input_data: dict,
     output_path: str | None = None,
-    model: str = "gemini-3-flash-preview",
+    model: str = "gemini-2.5-flash-preview",
 ) -> dict:
     """
     Execute the Layer 1 pipeline end-to-end.
@@ -119,8 +119,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--model",
-        default="gemini-3-flash-preview",
-        help="Gemini model to use (default: gemini-3-flash-preview)",
+        default="gemini-2.5-flash-preview",
+        help="Gemini model to use (default: gemini-2.5-flash-preview)",
     )
     args = parser.parse_args()
     

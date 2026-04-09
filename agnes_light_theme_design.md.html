@@ -1,0 +1,54 @@
+# DESIGN.md: Agnes Procurement Intelligence — Q-Hack 2026
+
+## 1. Project Vision
+**Agnes** is a modular decision-support system designed to transform procurement from a logistical task into a data-driven intelligence workflow. By leveraging the Spherecast architecture, Agnes identifies consolidation opportunities and automates the verification of technical raw materials using traceable evidence.
+
+### Core Value Proposition
+- **Molecular-Level Resilience:** Moving beyond vendor lists to understand the chemical and technical "fingerprint" of materials.
+- **Glass-Box Explainability:** Every recommendation is backed by a visible reasoning path and document-linked evidence.
+- **Strategic Optimization:** Balancing cost savings with supply chain resilience and Scope 3 sustainability targets.
+
+---
+
+## 2. The 4-Step Decision Pipeline
+The application is structured as a linear, minimalist process chain to guide users through complex material substitutions.
+
+### Step 1: Selection & Discovery
+- **User Action:** Selects a finished product (e.g., Gold Standard Whey) and drills down into the Bill of Materials (BOM).
+- **System Action:** Identifies high-risk or high-value components (e.g., Whey Protein Isolate) as candidates for substitution.
+- **Key UI:** `Step 1: Product & BOM Selection` — Focuses on visibility of component attributes like SKU, lead time, and current unit cost.
+
+### Step 2: Requirements & Constraints
+- **User Action:** Review and refine the "Hard" and "Soft" constraints that define a successful substitution.
+- **System Action:** Agnes programmatically pulls internal brand claims (e.g., "Grass-Fed") and external regulatory data (e.g., EU Food Law, Informed Sport standards).
+- **Key UI:** `Step 2: Requirements & Constraints` — A unified catalog of constraints including Purity Profiles, Certifications, and Ethical Sourcing.
+
+### Step 3: Verification & Assessment
+- **User Action:** Compare top supplier candidates side-by-side.
+- **System Action:** Automatically scans supplier technical data sheets (TDS) and certificates of analysis (COA) to verify compliance.
+- **Key UI:** `Step 3: Verification Matrix` — Features a detailed technical comparison (Purity, Mineral Profile, Processing Method) and an Expanded Evidence Repository.
+
+### Step 4: Final Recommendation
+- **User Action:** Review the AI-generated rationale and execute the decision.
+- **System Action:** Synthesizes cost, risk, and sustainability data into a clear "Top Pick" with an explainable executive summary.
+- **Key UI:** `Step 4: Final Recommendation` — Provides the "Reasoning Path" (e.g., "15% logistics savings offset by 4% unit price increase") and the final "Execute Decision" trigger.
+
+---
+
+## 3. Design System: Metric Cobalt
+The UI utilizes the **Metric Cobalt** design system to project a professional, technical, and data-centric aesthetic.
+
+- **Typography:** Manrope (Display) for clarity and Inter (Body) for technical data density.
+- **Color Palette:** Deep navy (#1B263B) for authority, accented by precision greens and reds for pass/fail verification status.
+- **Component Strategy:** Minimalist containers, flat elevations, and a global process pipeline at the top of every screen to reduce cognitive load during complex analysis.
+
+---
+
+## 4. Technical Logic & Data Strategy
+- **Layer 0-4 Modularization:** Each step corresponds to a standalone logic layer defined in the Agnes PoC spec.
+- **Evidence Trail:** Direct linking between verification results and source PDF documents in the Evidence Repository.
+- **AI Reasoning:** The use of LLMs to infer "Inferred Strict Requirements" from existing product certifications (e.g., if a product is NSF certified, the substitute *must* be as well).
+
+---
+
+*Prepared for Q-Hack 2026 by Team Artificially Unintelligent.*

@@ -127,7 +127,8 @@ def _verify_one_supplier(candidate, input_data, config, gemini_client):
 
     # 6. Verify against requirements
     verification_results = verify_requirements(
-        attributes, input_data.requirements, id_gen
+        attributes, input_data.requirements, id_gen,
+        ingredient_name=input_data.ingredient.canonical_name,
     )
 
     # 7. Aggregate
