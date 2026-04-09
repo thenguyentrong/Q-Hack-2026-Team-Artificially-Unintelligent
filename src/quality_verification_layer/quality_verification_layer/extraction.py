@@ -37,8 +37,9 @@ def _build_extraction_prompt(
     if requirement_fields:
         fields_str = ", ".join(requirement_fields)
         priority_section = f"""
-PRIORITY FIELDS (from requirements): {fields_str}
-Make sure to extract these fields first if they appear in the documents.
+REQUIRED FIELDS — you MUST attempt to extract these fields. If a field is not
+found in the documents, do NOT include it in the output (omit the key entirely).
+Required fields: {fields_str}
 """
 
     return f"""You are a quality-assurance data extraction specialist.
@@ -47,10 +48,16 @@ Target ingredient: {ingredient}
 Target supplier: {supplier}
 
 Below are documents fetched from the supplier's website.
-Extract EVERY quality-related field you can find — specifications, purity, assay,
-identity, physical properties, contaminants, heavy metals, microbial limits,
-certifications, allergens, storage, shelf life, regulatory status, etc.
+Extract quality-related fields — especially: purity/assay, heavy metals (lead, arsenic,
+cadmium, mercury), pH, loss on drying, residue on ignition, microbial limits,
+certifications, storage, shelf life.
 {priority_section}
+IMPORTANT:
+- Only include fields where you found an actual value in the documents.
+- Do NOT return "None", "N/A", or "Not Available" as values — simply omit those fields.
+- Specification limits ARE valid values. Extract "NMT 10 ppm" as value "10", "≤ 0.5%" as value "0.5", etc.
+- If a document says "conforms" or "passes test", extract as value "true".
+- If a COA shows an actual test result, prefer that over a TDS spec limit.
 
 IMPORTANT: For each field also rate "source_confidence":
   "high"   = this document is clearly a spec sheet for '{ingredient}' from '{supplier}'
@@ -117,9 +124,17 @@ def extract_attributes_with_gemini(
         logger.warning("Gemini returned non-JSON for %s, skipping extraction", supplier)
         return []
 
+    # Filter out null/None/N/A values
+    _SKIP_VALUES = {"none", "n/a", "not available", "not tested", "not applicable",
+                    "not specified", "not provided", "null", ""}
+
     attributes: List[ExtractedAttribute] = []
     for key, val in parsed.items():
         if not isinstance(val, dict):
+            continue
+
+        raw_value = str(val.get("value", ""))
+        if raw_value.lower().strip() in _SKIP_VALUES:
             continue
 
         sc = val.get("source_confidence", "medium")

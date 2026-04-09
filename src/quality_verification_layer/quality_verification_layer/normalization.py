@@ -22,6 +22,8 @@ CANONICAL_FIELD_MAP: Dict[str, str] = {
     "assay_percent": "purity",
     "content": "purity",
     "potency": "potency",
+    "protein": "purity",
+    "protein_content": "purity",
     # Grade
     "grade": "grade",
     "grade_claims": "grade",
@@ -34,6 +36,12 @@ CANONICAL_FIELD_MAP: Dict[str, str] = {
     "heavy_metals": "heavy_metals",
     "heavy_metals_ppm": "heavy_metals",
     "total_heavy_metals": "heavy_metals",
+    "heavy_metals_lead": "lead",
+    "heavy_metals_arsenic": "arsenic",
+    "heavy_metals_cadmium": "cadmium",
+    "heavy_metals_mercury": "mercury",
+    "heavy_metals_as_lead": "heavy_metals",
+    "heavy_metals_as_pb": "heavy_metals",
     # Individual metals
     "lead": "lead",
     "lead_ppm": "lead",
@@ -161,24 +169,46 @@ def _ingredient_stop_words(ingredient: str) -> Set[str]:
 
 
 def normalize_field_name(raw_name: str, ingredient: str) -> str:
-    """Map a raw extracted field name to a canonical requirement field name."""
+    """Map a raw extracted field name to a canonical requirement field name.
+
+    Strategy (in order):
+    1. Exact match in CANONICAL_FIELD_MAP
+    2. Strip ingredient stop-words, retry exact match
+    3. Match individual underscore-separated parts (e.g. "lead" in "lead_content_ppm")
+    4. Match multi-part segments (e.g. "heavy_metals" in "heavy_metals_as_pb")
+    5. Return original name unchanged
+    """
     key = raw_name.lower().strip()
 
+    # 1. Exact match
     if key in CANONICAL_FIELD_MAP:
         return CANONICAL_FIELD_MAP[key]
 
+    # 2. Strip ingredient stop-words, retry
     stop_words = _ingredient_stop_words(ingredient)
     parts = [p for p in key.split("_") if p not in stop_words]
     stripped = "_".join(parts)
     if stripped and stripped in CANONICAL_FIELD_MAP:
         return CANONICAL_FIELD_MAP[stripped]
 
-    # Sort by length descending so longer/more-specific keys match first
-    for canon_key, canon_val in sorted(
-        CANONICAL_FIELD_MAP.items(), key=lambda x: len(x[0]), reverse=True
-    ):
-        if canon_key in key:
-            return canon_val
+    key_parts = key.split("_")
+
+    # 3. Match multi-part segments first (longer = more specific)
+    # For "heavy_metals_as_lead_ppm" → tries "heavy_metals_as" then "heavy_metals" before "lead"
+    for window_size in range(min(4, len(key_parts)), 1, -1):
+        for i in range(len(key_parts) - window_size + 1):
+            segment = "_".join(key_parts[i : i + window_size])
+            if segment in CANONICAL_FIELD_MAP:
+                return CANONICAL_FIELD_MAP[segment]
+
+    # 4. Match individual parts as exact canonical keys
+    # Skip generic suffixes that aren't field identifiers
+    _SKIP_PARTS = {"content", "count", "percent", "ppm", "ppb", "mg", "cfu",
+                   "status", "presence", "test", "total", "value", "limit",
+                   "level", "max", "min", "as", "g", "kg"}
+    for part in sorted(key_parts, key=len, reverse=True):
+        if len(part) >= 2 and part not in _SKIP_PARTS and part in CANONICAL_FIELD_MAP:
+            return CANONICAL_FIELD_MAP[part]
 
     return raw_name
 

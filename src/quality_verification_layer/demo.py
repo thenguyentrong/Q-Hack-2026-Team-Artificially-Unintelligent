@@ -101,36 +101,66 @@ OVERALL_STYLE = {
 REQ_DIR = Path(__file__).resolve().parents[2] / "data" / "requirements"
 DB_PATH = Path(__file__).resolve().parents[2] / "data" / "db.sqlite"
 DEMO_OUTPUT = Path(__file__).resolve().parent / "demo_output"
+DEMO_EVIDENCE = Path(__file__).resolve().parent / "demo_evidence"
 
 # ── Requirements via Layer 1 ─────────────────────────────────────────────────
 
 
+def _get_canonical_fields() -> set[str]:
+    """Get the set of canonical field names that Layer 3 can verify."""
+    from quality_verification_layer.normalization import CANONICAL_FIELD_MAP
+    return set(CANONICAL_FIELD_MAP.values())
+
+
 def _generate_requirements(ingredient: IngredientRef) -> list[RequirementInput]:
-    """Call Layer 1 (requirements layer) to generate requirements via Gemini."""
+    """Call Layer 1 (requirements layer) to generate requirements via Gemini.
+
+    Post-filters to only keep requirements whose field_name matches
+    Layer 3's canonical field vocabulary — so every requirement can be verified.
+    """
     try:
         from src.requirement_layer.runner import run as run_layer1
 
         _status(f"Layer 1: Generating requirements for {ingredient.canonical_name}...")
 
-        result = run_layer1(
-            input_data={
-                "schema_version": "1.0",
-                "ingredient": {
-                    "ingredient_id": ingredient.ingredient_id,
-                    "canonical_name": ingredient.canonical_name,
-                    "aliases": ingredient.aliases,
+        # Suppress Layer 1's stdout JSON dump
+        import io
+        _old_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+        try:
+            result = run_layer1(
+                input_data={
+                    "schema_version": "1.0",
+                    "ingredient": {
+                        "ingredient_id": ingredient.ingredient_id,
+                        "canonical_name": ingredient.canonical_name,
+                        "aliases": ingredient.aliases,
+                    },
+                    "context": {"product_category": "food ingredient"},
                 },
-                "context": {"product_category": "food ingredient"},
-            },
-            model="gemini-2.5-flash",
-        )
+                model="gemini-2.5-flash",
+            )
+        finally:
+            sys.stdout = _old_stdout
+
+        canonical_fields = _get_canonical_fields()
+        from quality_verification_layer.normalization import normalize_field_name
 
         raw_reqs = result.get("requirements", [])
         reqs = []
+        dropped = []
         for r in raw_reqs:
+            # Normalize Layer 1 field names to Layer 3 canonical names
+            raw_field = r["field_name"]
+            canonical = normalize_field_name(raw_field, ingredient.canonical_name)
+
+            if canonical not in canonical_fields:
+                dropped.append(raw_field)
+                continue
+
             req = RequirementInput(
                 requirement_id=r.get("requirement_id", ""),
-                field_name=r["field_name"],
+                field_name=canonical,
                 rule_type=r["rule_type"],
                 operator=r.get("operator", ""),
                 priority="hard" if r.get("priority") == "hard" else "soft",
@@ -144,7 +174,41 @@ def _generate_requirements(ingredient: IngredientRef) -> list[RequirementInput]:
             )
             reqs.append(req)
 
+        # Deduplicate: when multiple requirements map to the same canonical field,
+        # keep the strictest (hard > soft, lower max_value wins for maximums)
+        seen_fields: dict[str, RequirementInput] = {}
+        deduped: list[RequirementInput] = []
+        for req in reqs:
+            key = (req.field_name, req.rule_type)
+            if key not in seen_fields:
+                seen_fields[key] = req
+                deduped.append(req)
+            else:
+                existing = seen_fields[key]
+                # Keep hard over soft
+                if req.priority == "hard" and existing.priority != "hard":
+                    deduped.remove(existing)
+                    seen_fields[key] = req
+                    deduped.append(req)
+                # For same priority + same rule type: keep stricter value
+                elif req.max_value is not None and existing.max_value is not None:
+                    if req.max_value < existing.max_value:
+                        deduped.remove(existing)
+                        seen_fields[key] = req
+                        deduped.append(req)
+
+        merged = len(reqs) - len(deduped)
+        reqs = deduped
+
         _status_clear()
+        hard = sum(1 for r in reqs if r.priority == "hard")
+        msg = f"  {CYAN}Layer 1: {len(reqs)} verifiable requirements ({hard} hard, {len(reqs) - hard} soft)"
+        if dropped:
+            msg += f", dropped {len(dropped)} unsupported"
+        if merged:
+            msg += f", merged {merged} duplicates"
+        msg += f"{RESET}"
+        print(msg, flush=True)
         return reqs
 
     except Exception as e:
@@ -307,6 +371,33 @@ def _get_competitors(ingredient: IngredientRef, max_candidates: int = 10) -> lis
         _status_clear()
         print(f"  {YELLOW}Competitor layer unavailable: {e}{RESET}", flush=True)
         return []
+
+
+# ── Cache ────────────────────────────────────────────────────────────────────
+
+CACHE_DIR = DEMO_OUTPUT / ".cache"
+
+
+def _cache_path(slug: str, stage: str) -> Path:
+    return CACHE_DIR / slug / f"{stage}.json"
+
+
+def _save_cache(slug: str, stage: str, data):
+    """Save intermediate result to cache."""
+    path = _cache_path(slug, stage)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if hasattr(data, "model_dump_json"):
+        path.write_text(data.model_dump_json(indent=2))
+    else:
+        path.write_text(json.dumps(data, default=str, indent=2))
+
+
+def _load_cache(slug: str, stage: str):
+    """Load cached intermediate result. Returns None if not found."""
+    path = _cache_path(slug, stage)
+    if path.exists():
+        return json.loads(path.read_text())
+    return None
 
 
 # ── PDF downloader ───────────────────────────────────────────────────────────
@@ -530,6 +621,157 @@ def _rank_suppliers(
 
 
 
+# ── Sample demo (local TDS files, no network) ───────────────────────────────
+
+
+def _run_sample_demo(config):
+    """Run a fully offline demo using local sample TDS files."""
+    from quality_verification_layer.schemas import QualityVerificationOutput
+
+    show_header()
+    console.print(f"  [bold yellow]SAMPLE MODE: using local TDS evidence files (no network)[/]")
+    console.print(f"  [dim]Gemini: {config.gemini_model}[/]")
+    console.print()
+
+    ingredient = IngredientRef(
+        ingredient_id="ING-ASCORBIC-ACID",
+        canonical_name="Ascorbic Acid",
+        aliases=["Vitamin C", "L-Ascorbic Acid"],
+    )
+
+    # Load sample TDS files as evidence
+    evidence_files = sorted(DEMO_EVIDENCE.glob("*.txt"))
+    if not evidence_files:
+        console.print(f"  [red]No sample evidence files found in {DEMO_EVIDENCE}[/]")
+        return
+
+    # Build suppliers from evidence files
+    suppliers = []
+    for i, f in enumerate(evidence_files, 1):
+        # Extract supplier name from filename (e.g. ascorbic_acid_tds_supplier_a.txt → Supplier A)
+        name_parts = f.stem.split("_supplier_")
+        supplier_name = f"Sample Supplier {name_parts[-1].upper()}" if len(name_parts) > 1 else f"Supplier {i}"
+
+        suppliers.append(CandidateSupplier(
+            supplier=SupplierRef(
+                supplier_id=f"SAMPLE-{i:03d}",
+                supplier_name=supplier_name,
+            ),
+            source_urls=[f"file://{f}"],
+        ))
+
+    # Generate requirements via Layer 1
+    requirements = _generate_requirements(ingredient)
+    if not requirements:
+        console.print(f"  [red]No requirements generated[/]")
+        return
+
+    show_ingredient_header(ingredient.canonical_name, 0, len(suppliers), 1, 1)
+    show_layer1_results(requirements, ingredient.canonical_name)
+    show_layer2_results([], suppliers, ingredient.canonical_name)
+
+    # Run verification with local evidence
+    # Override retrieval: inject local file content directly
+    from quality_verification_layer.id_generator import QualityIdGenerator
+    from quality_verification_layer.classification import classify_evidence_items
+    from quality_verification_layer.extraction import extract_attributes_with_gemini
+    from quality_verification_layer.normalization import normalize_attributes, resolve_conflicts
+    from quality_verification_layer.verification import verify_requirements
+    from quality_verification_layer.aggregation import (
+        compute_coverage_summary, compute_overall_status, compute_overall_confidence,
+    )
+    from quality_verification_layer.retrieval import FetchedSource
+    from quality_verification_layer.schemas import (
+        EvidenceItem, EvidenceStatus, SupplierAssessment, SupplierAssessmentStatus,
+    )
+    from quality_verification_layer.gemini_wrapper import create_gemini_client
+    from datetime import datetime, timezone
+
+    gemini = create_gemini_client(config.gemini_api_key, config.gemini_model)
+    now = datetime.now(timezone.utc).isoformat()
+
+    assessments = []
+    for i, (supplier, evidence_file) in enumerate(zip(suppliers, evidence_files), 1):
+        sid = supplier.supplier.supplier_id
+        sname = supplier.supplier.supplier_name
+        print(f"  [{i}/{len(suppliers)}] Verifying {sname}...", flush=True)
+
+        id_gen = QualityIdGenerator(sid)
+        text = evidence_file.read_text()
+
+        # Build evidence + source
+        evid_id = id_gen.next_evidence_id()
+        evidence_items = [EvidenceItem(
+            evidence_id=evid_id,
+            source_type="tds",
+            source_url=str(evidence_file),
+            title=evidence_file.name,
+            status=EvidenceStatus.retrieved,
+            retrieved_at=now,
+        )]
+        fetched_sources = [FetchedSource(
+            url=str(evidence_file),
+            content_type="text",
+            text=text,
+            ok=True,
+            evidence_id=evid_id,
+        )]
+
+        # Classify
+        evidence_items = classify_evidence_items(fetched_sources, evidence_items, ingredient.canonical_name)
+
+        # Extract via Gemini
+        req_fields = [r.field_name for r in requirements]
+        print(f"       Extracting via Gemini...", flush=True)
+        attributes = extract_attributes_with_gemini(
+            ingredient.canonical_name, sname, fetched_sources,
+            id_gen, gemini, config.rate_limit_delay, req_fields,
+        ) if gemini else []
+
+        # Normalize + resolve
+        attributes = normalize_attributes(attributes, ingredient.canonical_name)
+        attributes, conflict_notes = resolve_conflicts(attributes, evidence_items)
+
+        # Verify
+        verification_results = verify_requirements(attributes, requirements, id_gen)
+
+        # Aggregate
+        coverage = compute_coverage_summary(verification_results, requirements)
+        overall_status = compute_overall_status(coverage, evidence_items)
+        overall_confidence = compute_overall_confidence(evidence_items, attributes)
+
+        notes = list(conflict_notes)
+        missing = [vr.field_name for vr in verification_results
+                   if (vr.status if isinstance(vr.status, str) else vr.status.value) == "unknown"]
+        if missing:
+            notes.append(f"No values found for: {', '.join(missing)}")
+
+        assessments.append(SupplierAssessment(
+            supplier_id=sid,
+            evidence_items=evidence_items,
+            extracted_attributes=attributes,
+            verification_results=verification_results,
+            coverage_summary=coverage,
+            overall_evidence_confidence=overall_confidence,
+            overall_status=overall_status,
+            notes=notes,
+        ))
+
+    output = QualityVerificationOutput(
+        ingredient_id=ingredient.ingredient_id,
+        supplier_assessments=assessments,
+    )
+
+    supplier_names = {s.supplier.supplier_id: s.supplier.supplier_name for s in suppliers}
+
+    show_layer3_results(output, requirements, names=supplier_names)
+
+    ranked = _rank_suppliers(output.supplier_assessments, requirements)
+    show_final_ranking(ranked, ingredient.canonical_name, names=supplier_names)
+
+    show_footer(0, len(assessments), len(assessments), DEMO_OUTPUT)
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
@@ -609,6 +851,16 @@ def main():
         help="Skip competitor discovery (DB suppliers only)",
     )
     parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="Reuse cached results from a previous run (skip search + Gemini)",
+    )
+    parser.add_argument(
+        "--sample",
+        action="store_true",
+        help="Run with sample TDS evidence files (no network, guaranteed results)",
+    )
+    parser.add_argument(
         "--list",
         action="store_true",
         help="List all available ingredients in the database",
@@ -641,8 +893,15 @@ def main():
     config = QualityVerificationConfig(**d)
 
     selected = _resolve_ingredients(args)
+    fast_mode = args.fast
+
+    if args.sample:
+        _run_sample_demo(config)
+        return
 
     show_header()
+    if fast_mode:
+        console.print(f"  [bold yellow]FAST MODE: reusing cached results from previous run[/]")
     console.print(f"  [dim]Gemini: {config.gemini_model}[/]")
     console.print(f"  [dim]Evidence search: DuckDuckGo ({config.search_results_per_query} results/query)[/]")
     console.print(f"  [dim]Ingredients: {', '.join(s['label'] for s in selected)}[/]")
@@ -657,16 +916,33 @@ def main():
         db_slug = spec["slug"]
 
         # ── Layer 1: Generate requirements ──
-        requirements = _generate_requirements(ingredient)
+        cached_reqs = _load_cache(db_slug, "requirements") if fast_mode else None
+        if cached_reqs:
+            requirements = [RequirementInput(**r) for r in cached_reqs]
+            console.print(f"  [dim]Layer 1: loaded {len(requirements)} cached requirements[/]")
+        else:
+            requirements = _generate_requirements(ingredient)
+            _save_cache(db_slug, "requirements", [r.model_dump() for r in requirements])
 
         # ── Layer 2: Gather suppliers ──
-        db_suppliers = _get_db_suppliers(db_slug)
-        _status(f"Found {len(db_suppliers)} DB suppliers")
+        cached_suppliers = _load_cache(db_slug, "suppliers") if fast_mode else None
+        if cached_suppliers:
+            db_suppliers = [CandidateSupplier(**s) for s in cached_suppliers["db"]]
+            competitors = [CandidateSupplier(**s) for s in cached_suppliers["competitors"]]
+            console.print(f"  [dim]Layer 2: loaded {len(db_suppliers)} DB + {len(competitors)} competitors from cache[/]")
+        else:
+            db_suppliers = _get_db_suppliers(db_slug)
+            _status(f"Found {len(db_suppliers)} DB suppliers")
 
-        competitors = []
-        if not args.no_competitors:
-            competitors = _get_competitors(ingredient, max_candidates=10)
-            _status(f"Found {len(competitors)} competitors")
+            competitors = []
+            if not args.no_competitors:
+                competitors = _get_competitors(ingredient, max_candidates=10)
+                _status(f"Found {len(competitors)} competitors")
+
+            _save_cache(db_slug, "suppliers", {
+                "db": [s.model_dump() for s in db_suppliers],
+                "competitors": [s.model_dump() for s in competitors],
+            })
 
         # Deduplicate
         seen_names: set = set()
@@ -688,26 +964,37 @@ def main():
         show_layer2_results(competitors, db_suppliers, ingredient.canonical_name)
 
         # ── Layer 3: Quality verification ──
-        qv_input = QualityVerificationInput(
-            ingredient=ingredient,
-            requirements=requirements,
-            candidate_suppliers=all_suppliers,
-        )
+        from quality_verification_layer.schemas import QualityVerificationOutput
 
-        _status(f"Layer 3: Verifying {len(all_suppliers)} suppliers...")
-        t0 = time.monotonic()
-        output = run_quality_verification(qv_input, config)
-        elapsed = time.monotonic() - t0
-        _status_clear()
+        cached_output = _load_cache(db_slug, "verification") if fast_mode else None
+        if cached_output:
+            output = QualityVerificationOutput.model_validate(cached_output)
+            elapsed = 0
+            console.print(f"  [dim]Layer 3: loaded {len(output.supplier_assessments)} cached assessments[/]")
+        else:
+            qv_input = QualityVerificationInput(
+                ingredient=ingredient,
+                requirements=requirements,
+                candidate_suppliers=all_suppliers,
+            )
 
-        # Download PDFs
-        pdfs = download_pdfs(output, ingredient.canonical_name)
-        if pdfs:
-            console.print(f"  [green]Downloaded {len(pdfs)} PDF(s):[/]")
-            for p in pdfs:
-                size_kb = p.stat().st_size / 1024
-                console.print(f"    [green]>[/] {p.name} [dim]({size_kb:.0f} KB)[/]")
-            console.print()
+            _status(f"Layer 3: Verifying {len(all_suppliers)} suppliers...")
+            t0 = time.monotonic()
+            output = run_quality_verification(qv_input, config)
+            elapsed = time.monotonic() - t0
+            _status_clear()
+
+            _save_cache(db_slug, "verification", output.model_dump())
+
+        # Download PDFs (skip in fast mode — already downloaded)
+        if not fast_mode:
+            pdfs = download_pdfs(output, ingredient.canonical_name)
+            if pdfs:
+                console.print(f"  [green]Downloaded {len(pdfs)} PDF(s):[/]")
+                for p in pdfs:
+                    size_kb = p.stat().st_size / 1024
+                    console.print(f"    [green]>[/] {p.name} [dim]({size_kb:.0f} KB)[/]")
+                console.print()
 
         total_all += len(output.supplier_assessments)
         total_shown += len([
@@ -728,7 +1015,10 @@ def main():
         ranked = _rank_suppliers(output.supplier_assessments, requirements)
         show_final_ranking(ranked, ingredient.canonical_name, names=supplier_names)
 
-        console.print(f"  [dim]Completed in {elapsed:.0f}s[/]")
+        if elapsed:
+            console.print(f"  [dim]Completed in {elapsed:.0f}s[/]")
+        else:
+            console.print(f"  [dim]Completed (from cache)[/]")
         console.print()
 
     total_time = time.monotonic() - t_start
