@@ -37,14 +37,14 @@ def compute_coverage_summary(
         status = vr.status if isinstance(vr.status, str) else vr.status.value
 
         if p == "hard":
-            if status == "pass":
+            if status in ("pass", "partial"):
                 hard_pass += 1
             elif status == "fail":
                 hard_fail += 1
             else:
                 hard_unknown += 1
         else:
-            if status == "pass":
+            if status in ("pass", "partial"):
                 soft_pass += 1
             elif status == "fail":
                 soft_fail += 1

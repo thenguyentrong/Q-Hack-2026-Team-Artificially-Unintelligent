@@ -155,10 +155,8 @@ def retrieve_evidence(
     evidence_items: List[EvidenceItem] = []
     fetched_sources: List[FetchedSource] = []
 
-    print(
-        f"       Fetching {len(urls)} URL(s)...",
-        flush=True,
-    )
+    from .progress import status
+    status(f"Fetching {len(urls)} URL(s)...")
 
     with httpx.Client(headers=_HEADERS) as client:
         for url in urls:

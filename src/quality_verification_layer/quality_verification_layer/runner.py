@@ -41,6 +41,8 @@ def run_quality_verification(
     )
     t0 = time.monotonic()
 
+    from .progress import status, clear
+
     gemini = create_gemini_client(config.gemini_api_key, config.gemini_model)
 
     total = len(input_data.candidate_suppliers)
@@ -49,10 +51,7 @@ def run_quality_verification(
         supplier_id = candidate.supplier.supplier_id
         supplier_name = candidate.supplier.supplier_name
         logger.info("Processing supplier %s", supplier_id)
-        print(
-            f"  [{i}/{total}] Verifying {supplier_name} ({supplier_id})...",
-            flush=True,
-        )
+        status(f"[{i}/{total}] Verifying {supplier_name}...")
 
         try:
             assessment = _verify_one_supplier(
@@ -71,6 +70,7 @@ def run_quality_verification(
 
         assessments.append(assessment)
 
+    clear()  # clear the last status line
     elapsed = time.monotonic() - t0
     logger.info("Completed in %.1fs — %d supplier assessments", elapsed, len(assessments))
 
@@ -102,8 +102,9 @@ def _verify_one_supplier(candidate, input_data, config, gemini_client):
     )
 
     # 3. Extract attributes via Gemini
+    from .progress import status
     ok_count = sum(1 for s in fetched_sources if s.ok)
-    print(f"       {ok_count}/{len(fetched_sources)} sources accessible, extracting via Gemini...", flush=True)
+    status(f"{ok_count}/{len(fetched_sources)} sources accessible, extracting via Gemini...")
     req_fields = [r.field_name for r in input_data.requirements]
     if gemini_client:
         attributes = extract_attributes_with_gemini(
