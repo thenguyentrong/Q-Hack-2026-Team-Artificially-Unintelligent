@@ -24,45 +24,7 @@ export default function RootLayout({
 
         {/* Main content */}
         <div className="flex-1 ml-64 flex flex-col min-h-screen">
-          {/* Topbar */}
-          <header className="flex justify-between items-center w-full px-8 py-4 h-16 sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
-            <div className="flex items-center gap-8">
-              <div className="relative flex items-center">
-                <span className="material-symbols-outlined absolute left-3 text-outline text-[18px]">search</span>
-                <input
-                  className="bg-surface-container-high border-none rounded-lg pl-9 pr-4 py-1.5 w-64 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20"
-                  placeholder="Search procurement data..."
-                  type="text"
-                />
-              </div>
-              <nav className="hidden md:flex items-center gap-6">
-                {["Dashboard", "Inventory", "Suppliers", "Reports"].map((item, i) => (
-                  <a
-                    key={item}
-                    href="#"
-                    className={`text-sm font-medium transition-colors ${
-                      i === 0
-                        ? "text-slate-900 border-b-2 border-slate-600 pb-0.5"
-                        : "text-slate-500 hover:text-slate-900"
-                    }`}
-                  >
-                    {item}
-                  </a>
-                ))}
-              </nav>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">
-                notifications
-              </span>
-              <span className="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">
-                history
-              </span>
-              <div className="w-8 h-8 rounded-full overflow-hidden bg-surface-container border border-outline-variant/20 flex items-center justify-center text-xs font-bold text-on-surface-variant">
-                AP
-              </div>
-            </div>
-          </header>
+
 
           <main className="flex-1 p-8">
             {children}
