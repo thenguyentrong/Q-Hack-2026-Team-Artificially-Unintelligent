@@ -21,16 +21,16 @@ import time
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
-from id_generator import IdGenerator
-from model_config import (
+from src.requirement_layer.id_generator import IdGenerator
+from src.requirement_layer.model_config import (
     DEFAULT_MAX_RETRIES,
     DEFAULT_MODEL,
     DEFAULT_RETRY_DELAY,
     GEMINI_TOOLS,
 )
-from prompts import SYSTEM_PROMPT
-from rule_validator import RuleValidator
-from schemas.models import (
+from src.requirement_layer.prompts import SYSTEM_PROMPT
+from src.requirement_layer.rule_validator import RuleValidator
+from src.requirement_layer.schemas.models import (
     IngredientContext,
     IngredientRef,
     RequirementRule,
