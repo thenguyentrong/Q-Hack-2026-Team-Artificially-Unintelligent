@@ -2,14 +2,21 @@ import traceback
 import asyncio
 import sys
 import json
+import logging
 from pathlib import Path
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv, find_dotenv
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger("api")
+
+
 # Load env variables globally
-load_dotenv(find_dotenv('.env.local'))
+load_dotenv(find_dotenv(".env.local"))
 load_dotenv()
 
 # Add the project root to sys path so we can import src and competitor_layer
@@ -29,6 +36,19 @@ from api.catalog_db import (
 
 app = FastAPI(docs_url="/api/py/docs", openapi_url="/api/py/openapi.json")
 
+
+@app.middleware("http")
+async def log_requests(request, call_next):
+    logger.info(f"→ Request: {request.method} {request.url.path}")
+    if request.query_params:
+        logger.info(f"   Query params: {dict(request.query_params)}")
+
+    response = await call_next(request)
+
+    logger.info(f"← Response: {response.status_code}")
+    return response
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -37,28 +57,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/api/py")
 def root():
-    return {
-        "ok": True,
-        "message": "Agnes backend is live"
-    }
+    return {"ok": True, "message": "Agnes backend is live"}
+
 
 @app.get("/api/py/health")
 def health():
     return {"status": "healthy"}
 
+
 from src.preprocessing_layer.main import preprocess_ingredient_route
 from src.preprocessing_layer.models import PreprocessingInput, MyIngredientOutput
+
+
 @app.post("/api/py/preprocess", response_model=MyIngredientOutput)
 async def preprocess_endpoint(input_data: PreprocessingInput):
-    return await preprocess_ingredient_route(input_data)
+    logger.info(f"PREPROCESS INPUT: {input_data.model_dump_json()}")
+    result = await preprocess_ingredient_route(input_data)
+    logger.info(f"PREPROCESS OUTPUT: {result.model_dump_json()}")
+    return result
+
 
 @app.post("/api/py/layer1")
 async def layer1_test(input_data: MyIngredientOutput):
+    logger.info(f"LAYER1 INPUT: {input_data.model_dump_json()}")
     try:
         from dotenv import load_dotenv, find_dotenv
-        load_dotenv(find_dotenv('.env.local'))
+
+        load_dotenv(find_dotenv(".env.local"))
         load_dotenv()
 
         from src.requirement_layer.input_processor import InputProcessor
@@ -71,7 +99,11 @@ async def layer1_test(input_data: MyIngredientOutput):
         try:
             engine = RequirementEngine(model="gemini-2.5-flash")
         except OSError as e:
-            return {"error": "API Key Missing", "detail": "The Python Backend could not find your GEMINI_API_KEY. Ensure you replaced the placeholder in .env.local with a real key! Error: " + str(e)}
+            return {
+                "error": "API Key Missing",
+                "detail": "The Python Backend could not find your GEMINI_API_KEY. Ensure you replaced the placeholder in .env.local with a real key! Error: "
+                + str(e),
+            }
 
         requirements = engine.generate(
             ingredient=payload.ingredient,
@@ -79,49 +111,69 @@ async def layer1_test(input_data: MyIngredientOutput):
             ingredient_id=payload.ingredient.ingredient_id,
         )
 
-        return OutputFormatter().to_dict(OutputFormatter().build(payload.ingredient.ingredient_id, requirements, "Generated successfully"))
+        result = OutputFormatter().to_dict(
+            OutputFormatter().build(
+                payload.ingredient.ingredient_id, requirements, "Generated successfully"
+            )
+        )
+        logger.info(f"LAYER1 OUTPUT: {result}")
+        return result
 
     except BaseException as e:
+        logger.error(f"LAYER1 ERROR: {str(e)}")
         return {"error": "Server Caught Fatal Error", "detail": str(e)}
+
 
 @app.get("/api/py/layer2")
 async def layer2_test(ingredient: str = "Ascorbic Acid"):
+    logger.info(f"LAYER2 INPUT: ingredient={ingredient}")
     try:
         from competitor_layer.runner import run_from_json
         from competitor_layer.config import load_config
+
         input_data = {
             "ingredient": {
                 "ingredient_id": "ING-001",
                 "canonical_name": ingredient,
-                "aliases": ["Vitamin C"]
+                "aliases": ["Vitamin C"],
             },
-            "context": {
-                "region": "US"
-            }
+            "context": {"region": "US"},
         }
 
         from dotenv import load_dotenv, find_dotenv
-        load_dotenv(find_dotenv('.env.local'))
+
+        load_dotenv(find_dotenv(".env.local"))
         load_dotenv()
 
         config = load_config()
         import dataclasses
-        if not config.GEMINI_API_KEY or config.GEMINI_API_KEY.startswith("AIzaSyCji") or not config.google_cse_id:
+
+        if (
+            not config.GEMINI_API_KEY
+            or config.GEMINI_API_KEY.startswith("AIzaSyCji")
+            or not config.google_cse_id
+        ):
             config = dataclasses.replace(config, search_engine="mock")
 
         result_str = run_from_json(json.dumps(input_data), config)
-        return json.loads(result_str)
+        result = json.loads(result_str)
+        logger.info(f"LAYER2 OUTPUT: {result}")
+        return result
     except Exception as e:
+        logger.error(f"LAYER2 ERROR: {str(e)}")
         return {"error": "Layer 2 Engine Failure", "detail": str(e)}
+
 
 @app.get("/api/py/layer3")
 async def layer3_test(ingredient: str = "Whey Protein Isolate"):
     """Delegates to the real E2E pipeline and returns the Layer 3 verification data."""
+    logger.info(f"LAYER3 INPUT: ingredient={ingredient}")
     try:
         from src.e2e_runner import run_e2e
+
         result = run_e2e(ingredient)
         layer3_raw = result.get("layer3_raw", [])
-        return {
+        response = {
             "status": "real",
             "ingredient": ingredient,
             "verifications": [
@@ -129,79 +181,122 @@ async def layer3_test(ingredient: str = "Whey Protein Isolate"):
                     "supplier": s["supplier"],
                     "overall_status": s["status"],
                     "confidence": s["confidence"],
-                    "extracted": s.get("extracted", [])
+                    "extracted": s.get("extracted", []),
                 }
                 for s in layer3_raw
-            ]
+            ],
         }
+        logger.info(f"LAYER3 OUTPUT: {response}")
+        return response
     except Exception as e:
+        logger.error(f"LAYER3 ERROR: {str(e)}")
         return {"error": "Layer 3 Engine Failure", "detail": str(e)}
+
 
 @app.get("/api/py/layer4")
 async def layer4_test(ingredient: str = "Whey Protein Isolate"):
     """Delegates to the real E2E pipeline and returns the Layer 4 decision."""
+    logger.info(f"LAYER4 INPUT: ingredient={ingredient}")
     try:
         from src.e2e_runner import run_e2e
+
         result = run_e2e(ingredient)
-        return {
+        response = {
             "status": "real",
             "ingredient": ingredient,
-            **result.get("decision", {})
+            **result.get("decision", {}),
         }
+        logger.info(f"LAYER4 OUTPUT: {response}")
+        return response
     except Exception as e:
+        logger.error(f"LAYER4 ERROR: {str(e)}")
         return {"error": "Layer 4 Engine Failure", "detail": str(e)}
+
 
 @app.get("/api/py/e2e")
 async def e2e_test(ingredient: str = "Vitamin C"):
+    logger.info(f"E2E INPUT: ingredient={ingredient}")
     try:
         from src.e2e_runner import run_e2e
-        return run_e2e(ingredient)
+
+        result = run_e2e(ingredient)
+        logger.info(f"E2E OUTPUT: {result}")
+        return result
     except Exception as e:
+        logger.error(f"E2E ERROR: {str(e)}")
         return {"error": "E2E Engine Failure", "detail": str(e)}
+
 
 # ---------------------------------------------------------------------------
 # Real DB Catalog Endpoints
 # ---------------------------------------------------------------------------
 
+
 @app.get("/api/py/catalog/products")
 def catalog_products(limit: int = Query(default=12, le=50)):
     """Return real finished-good products from the SQLite catalog."""
+    logger.info(f"CATALOG PRODUCTS: limit={limit}")
     try:
-        return {"products": get_finished_goods(limit=limit)}
+        result = {"products": get_finished_goods(limit=limit)}
+        logger.info(f"CATALOG PRODUCTS OUTPUT: {len(result.get('products', []))} items")
+        return result
     except Exception as e:
+        logger.error(f"CATALOG PRODUCTS ERROR: {str(e)}")
         return {"error": str(e)}
+
 
 @app.get("/api/py/catalog/bom")
 def catalog_bom(sku: str = Query(..., description="Finished-good SKU")):
     """Return the real BOM components for a finished-good SKU."""
+    logger.info(f"CATALOG BOM: sku={sku}")
     try:
         components = get_bom_for_fg(sku)
-        return {"sku": sku, "components": components}
+        result = {"sku": sku, "components": components}
+        logger.info(f"CATALOG BOM OUTPUT: {len(components)} components")
+        return result
     except Exception as e:
+        logger.error(f"CATALOG BOM ERROR: {str(e)}")
         return {"error": str(e)}
+
 
 @app.get("/api/py/catalog/suppliers")
 def catalog_suppliers():
     """Return all known suppliers from the real database."""
+    logger.info("CATALOG SUPPLIERS")
     try:
-        return {"suppliers": get_all_suppliers()}
+        result = {"suppliers": get_all_suppliers()}
+        logger.info(
+            f"CATALOG SUPPLIERS OUTPUT: {len(result.get('suppliers', []))} suppliers"
+        )
+        return result
     except Exception as e:
+        logger.error(f"CATALOG SUPPLIERS ERROR: {str(e)}")
         return {"error": str(e)}
+
 
 @app.get("/api/py/catalog/top-ingredients")
 def catalog_top_ingredients(limit: int = Query(default=10, le=30)):
     """Return the most-used raw material ingredients across all BOMs."""
+    logger.info(f"CATALOG TOP-INGREDIENTS: limit={limit}")
     try:
-        return {"ingredients": get_top_raw_materials(limit=limit)}
+        result = {"ingredients": get_top_raw_materials(limit=limit)}
+        logger.info(
+            f"CATALOG TOP-INGREDIENTS OUTPUT: {len(result.get('ingredients', []))} ingredients"
+        )
+        return result
     except Exception as e:
+        logger.error(f"CATALOG TOP-INGREDIENTS ERROR: {str(e)}")
         return {"error": str(e)}
+
 
 @app.get("/api/py/health/keys")
 async def health_keys():
+    logger.info("HEALTH KEYS CHECK")
     try:
         import os
         from dotenv import load_dotenv, find_dotenv
-        load_dotenv(find_dotenv('.env.local'))
+
+        load_dotenv(find_dotenv(".env.local"))
         load_dotenv()
 
         gemini_key = os.environ.get("GEMINI_API_KEY")
@@ -215,6 +310,7 @@ async def health_keys():
         if gemini_key and not gemini_key.startswith("paste_your"):
             try:
                 from google import genai
+
                 client = genai.Client(api_key=gemini_key)
                 gemini_status = "Connected"
                 gemini_detail = "Successfully authenticated with Google AI Studio."
@@ -223,18 +319,30 @@ async def health_keys():
                 gemini_status = "Auth Error"
                 gemini_detail = f"Google rejected your key: {str(e)}"
 
-        return {
+        result = {
             "gemini": {
-                "key_present": bool(gemini_key and not gemini_key.startswith("paste_your")),
+                "key_present": bool(
+                    gemini_key and not gemini_key.startswith("paste_your")
+                ),
                 "status": gemini_status,
                 "detail": gemini_detail,
-                "pass": gemini_pass
+                "pass": gemini_pass,
             },
             "google_search": {
-                "api_key_present": bool(google_key and not google_key.startswith("paste_your")),
-                "cse_id_present": bool(google_cse and not google_cse.startswith("paste_your")),
-                "detail": "Search APIs correctly bound to local environment context."
-            }
+                "api_key_present": bool(
+                    google_key and not google_key.startswith("paste_your")
+                ),
+                "cse_id_present": bool(
+                    google_cse and not google_cse.startswith("paste_your")
+                ),
+                "detail": "Search APIs correctly bound to local environment context.",
+            },
         }
+        logger.info(f"HEALTH KEYS OUTPUT: {result}")
+        return result
     except Exception as e:
-        return {"error": True, "detail": f"Server diagnostics gracefully caught a runtime exception: {str(e)}\n{traceback.format_exc()}"}
+        logger.error(f"HEALTH KEYS ERROR: {str(e)}")
+        return {
+            "error": True,
+            "detail": f"Server diagnostics gracefully caught a runtime exception: {str(e)}\n{traceback.format_exc()}",
+        }
