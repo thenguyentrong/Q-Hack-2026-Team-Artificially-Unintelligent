@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "./globals.css";
 import { Manrope, Inter } from "next/font/google";
 
@@ -11,11 +10,16 @@ export const metadata: Metadata = {
   description: "Identify consolidation targets and verify alternatives with Agnes.",
 };
 
+const STEPS = [
+  { label: "Selection", num: 1 },
+  { label: "Requirements", num: 2 },
+  { label: "Verification", num: 3 },
+  { label: "Decision", num: 4 },
+];
+
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${manrope.variable} ${inter.variable}`}>
       <body className="bg-[#F8F9FA] text-[#1B263B] antialiased font-sans">

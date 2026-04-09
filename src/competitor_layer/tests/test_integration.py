@@ -1,6 +1,6 @@
 """Integration tests using real Google Search and Gemini APIs.
 
-Requires GOOGLE_API_KEY, GOOGLE_CSE_ID, and GEMINI_API_KEY in .env.
+Requires GEMINI_API_KEY, GOOGLE_CSE_ID, and GEMINI_API_KEY in .env.
 Run with: pytest tests/test_integration.py -v -m integration
 """
 
@@ -156,7 +156,7 @@ class TestFullPipelineLive:
             gemini_model="gemini-2.5-flash",
             max_candidates=3,
             ranking_enabled=True,
-            google_api_key=None,
+            GEMINI_API_KEY=None,
             google_cse_id=None,
             search_engine="duckduckgo",
             search_results_per_query=5,

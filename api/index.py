@@ -18,8 +18,31 @@ from fastapi.responses import StreamingResponse
 base_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(base_dir))
 sys.path.insert(0, str(base_dir / "src" / "competitor_layer"))
+sys.path.insert(0, str(base_dir / "src" / "quality_verification_layer"))
+
+# Real SQLite catalog helpers
+from api.catalog_db import (
+    get_finished_goods,
+    get_bom_for_fg,
+    get_all_suppliers,
+    get_suppliers_for_rm,
+    get_top_raw_materials,
+)
 
 app = FastAPI(docs_url="/api/py/docs", openapi_url="/api/py/openapi.json")
+
+
+@app.middleware("http")
+async def log_requests(request, call_next):
+    logger.info(f"→ Request: {request.method} {request.url.path}")
+    if request.query_params:
+        logger.info(f"   Query params: {dict(request.query_params)}")
+
+    response = await call_next(request)
+
+    logger.info(f"← Response: {response.status_code}")
+    return response
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -776,8 +799,10 @@ async def layer1_test(ingredient: str = "Ascorbic Acid"):
         return {"error": str(e)}
 
 
+
 @app.get("/api/py/layer2")
 async def layer2_test(ingredient: str = "Ascorbic Acid"):
+    logger.info(f"LAYER2 INPUT: ingredient={ingredient}")
     try:
         _load_env()
         from competitor_layer.runner import run_from_json
@@ -792,6 +817,8 @@ async def layer2_test(ingredient: str = "Ascorbic Acid"):
         if not config.google_api_key or not config.google_cse_id:
             config = dataclasses.replace(config, search_engine="mock")
         result_str = run_from_json(json.dumps(input_data), config)
-        return json.loads(result_str)
+        result = json.loads(result_str)
+        logger.info(f"LAYER2 OUTPUT: {result}")
+        return result
     except Exception as e:
         return {"error": str(e)}

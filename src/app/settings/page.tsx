@@ -2,147 +2,158 @@
 
 import { useState } from "react";
 
+type KeyResult = { pass?: boolean; key_present?: boolean; detail?: string; status?: string; api_key_present?: boolean; cse_id_present?: boolean };
+type DiagResult = { error?: boolean; detail?: string; gemini?: KeyResult; google_search?: KeyResult };
+
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<DiagResult | null>(null);
 
   const runDiagnostics = async () => {
     setLoading(true);
     setResults(null);
     try {
       const res = await fetch("/api/py/health/keys");
-      
-      let data;
-      const textPayload = await res.text();
+      const text = await res.text();
+      let data: DiagResult;
       try {
-        data = JSON.parse(textPayload);
-      } catch (parseError) {
-        // If Vercel or local Proxy throws a 504/500 HTML page due to dead backend or timeouts
-        throw new Error(`Server returned a non-JSON framework error (Status: ${res.status}). Body: ${textPayload.substring(0, 500)}`);
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Non-JSON response (${res.status}): ${text.substring(0, 300)}`);
       }
-      
-      if (!res.ok && data.error) {
-        throw new Error(data.detail || data.error);
-      }
-      
+      if (!res.ok && data.error) throw new Error(data.detail || "Unknown error");
       setResults(data);
     } catch (err: any) {
-      setResults({
-        error: true,
-        detail: err.message
-      });
+      setResults({ error: true, detail: err.message });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="tab-pane active fade-in" style={{ padding: '2rem' }}>
-      <div style={{ marginBottom: "2rem" }}>
-        <h2 style={{ fontSize: "1.5rem", fontWeight: "600", marginBottom: "0.5rem" }}>System Diagnostics</h2>
-        <p style={{ color: "rgba(255, 255, 255, 0.6)", lineHeight: "1.6" }}>
-          Verify that your local environment variables and API tokens are correctly injected into the backend engines.
+    <div className="max-w-4xl">
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-2 text-xs font-medium text-outline-variant">
+          <span>System</span>
+          <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+          <span className="text-primary font-bold">Diagnostics</span>
+        </div>
+        <h1 className="text-3xl font-extrabold text-on-surface tracking-tight">System Diagnostics</h1>
+        <p className="text-on-surface-variant mt-1 text-sm">
+          Verify that your environment variables and API tokens are correctly injected into the backend engines.
         </p>
       </div>
 
-      <div style={{ display: "flex", gap: "1rem", marginBottom: "3rem" }}>
-        <button 
-          className="btn-primary" 
-          onClick={runDiagnostics} 
-          disabled={loading}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-        >
-          {loading ? (
-            <div className="spinner" style={{ width: "16px", height: "16px", borderWidth: "2px" }}></div>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-            </svg>
-          )}
-          {loading ? "Running Network Protocol..." : "Run Diagnostics"}
-        </button>
-      </div>
+      <button
+        onClick={runDiagnostics}
+        disabled={loading}
+        className="primary-gradient text-on-primary px-6 py-3 rounded-xl font-bold text-sm shadow-lg hover:opacity-90 transition-all disabled:opacity-60 flex items-center gap-2 mb-10"
+      >
+        {loading ? (
+          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+          </svg>
+        ) : (
+          <span className="material-symbols-outlined text-[18px]">monitor_heart</span>
+        )}
+        {loading ? "Running Network Protocol..." : "Run Diagnostics"}
+      </button>
 
       {results && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          
-          {/* Gemini AI Integration */}
-          <div className="action-card" style={{ padding: "1.5rem", borderLeft: results.gemini?.pass ? "4px solid #10b981" : "4px solid #ef4444" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={results.gemini?.pass ? "#10b981" : "#ef4444"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                  </svg>
-                </div>
-                <div>
-                  <h3 style={{ fontSize: "1.1rem", fontWeight: "600" }}>Gemini Generative AI</h3>
-                  <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.5)", marginTop: "0.25rem" }}>Agent reasoning framework connection</div>
-                </div>
+        <div className="space-y-4">
+          {/* Error state */}
+          {results.error && (
+            <div className="bg-error-container/10 border border-error/20 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="material-symbols-outlined text-error text-xl fill-icon">error_outline</span>
+                <h3 className="font-bold text-on-surface">Backend Unreachable</h3>
               </div>
-              <div style={{ 
-                padding: "0.25rem 0.75rem", 
-                borderRadius: "999px", 
-                fontSize: "0.75rem", 
-                fontWeight: "600", 
-                backgroundColor: results.gemini?.pass ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)",
-                color: results.gemini?.pass ? "#10b981" : "#ef4444",
-                border: results.gemini?.pass ? "1px solid rgba(16, 185, 129, 0.2)" : "1px solid rgba(239, 68, 68, 0.2)"
-              }}>
-                {results.gemini?.status || "Error"}
-              </div>
+              <p className="text-xs text-on-surface-variant font-mono break-all">{results.detail}</p>
             </div>
+          )}
 
-            <div style={{ padding: "1rem", backgroundColor: "rgba(0,0,0,0.3)", borderRadius: "8px", fontSize: "0.9rem", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.05)" }}>
-              <div style={{ marginBottom: "0.5rem" }}><strong>Key Injected:</strong> {results.gemini?.key_present ? "✅ Yes" : "❌ No"}</div>
-              <div><strong>Network Response:</strong> <span style={{ fontFamily: "monospace", color: results.gemini?.pass ? "#10b981" : "#ef4444" }}>{results.gemini?.detail}</span></div>
-            </div>
-          </div>
-
-          {/* Google Search Integration */}
-          <div className="action-card" style={{ padding: "1.5rem", borderLeft: (results.google_search?.api_key_present && results.google_search?.cse_id_present) ? "4px solid #10b981" : "4px solid #f59e0b" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
+          {/* Gemini */}
+          {results.gemini && (
+            <div className={`bg-surface-container-lowest rounded-xl p-6 border-l-4 shadow-sm ${results.gemini.pass ? "border-tertiary" : "border-error"}`}>
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${results.gemini.pass ? "bg-tertiary-container" : "bg-error-container/20"}`}>
+                    <span className={`material-symbols-outlined fill-icon ${results.gemini.pass ? "text-tertiary" : "text-error"}`}>
+                      {results.gemini.pass ? "verified" : "error_outline"}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-on-surface">Gemini Generative AI</h3>
+                    <p className="text-xs text-on-surface-variant">Agent reasoning framework connection</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 style={{ fontSize: "1.1rem", fontWeight: "600" }}>Google Custom Search</h3>
-                  <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.5)", marginTop: "0.25rem" }}>Competitor discovery internet access</div>
+                <span className={`text-[0.7rem] font-bold px-3 py-1 rounded-full ${results.gemini.pass ? "bg-tertiary-container text-on-tertiary-container" : "bg-error-container/20 text-on-error-container"}`}>
+                  {results.gemini.status || (results.gemini.pass ? "Active" : "Error")}
+                </span>
+              </div>
+              <div className="bg-surface-container-low rounded-lg p-4 text-sm space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant font-medium">Key Injected</span>
+                  <span className={`font-bold ${results.gemini.key_present ? "text-tertiary" : "text-error"}`}>
+                    {results.gemini.key_present ? "✅ Yes" : "❌ No"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant font-medium">Network Response</span>
+                  <span className={`font-mono text-xs ${results.gemini.pass ? "text-tertiary" : "text-error"}`}>
+                    {results.gemini.detail}
+                  </span>
                 </div>
               </div>
-              <div style={{ 
-                padding: "0.25rem 0.75rem", 
-                borderRadius: "999px", 
-                fontSize: "0.75rem", 
-                fontWeight: "600", 
-                backgroundColor: "rgba(245, 158, 11, 0.1)",
-                color: "#f59e0b",
-                border: "1px solid rgba(245, 158, 11, 0.2)"
-              }}>
-                {(results.google_search?.api_key_present && results.google_search?.cse_id_present) ? "Active" : "Incomplete"}
+            </div>
+          )}
+
+          {/* Google Search */}
+          {results.google_search && (
+            <div className={`bg-surface-container-lowest rounded-xl p-6 border-l-4 shadow-sm ${results.google_search.api_key_present && results.google_search.cse_id_present ? "border-tertiary" : "border-outline-variant"}`}>
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center">
+                    <span className="material-symbols-outlined text-outline">search</span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-on-surface">Google Custom Search</h3>
+                    <p className="text-xs text-on-surface-variant">Competitor discovery internet access</p>
+                  </div>
+                </div>
+                <span className={`text-[0.7rem] font-bold px-3 py-1 rounded-full ${results.google_search.api_key_present && results.google_search.cse_id_present ? "bg-tertiary-container text-on-tertiary-container" : "bg-surface-container text-on-surface-variant"}`}>
+                  {results.google_search.api_key_present && results.google_search.cse_id_present ? "Active" : "Incomplete"}
+                </span>
+              </div>
+              <div className="bg-surface-container-low rounded-lg p-4 text-sm space-y-2">
+                {[
+                  { label: "Google API Key", ok: results.google_search.api_key_present },
+                  { label: "Search Engine ID (CSE)", ok: results.google_search.cse_id_present },
+                ].map((item) => (
+                  <div key={item.label} className="flex justify-between">
+                    <span className="text-on-surface-variant font-medium">{item.label}</span>
+                    <span className={`font-bold ${item.ok ? "text-tertiary" : "text-error"}`}>
+                      {item.ok ? "✅ Present" : "❌ Missing"}
+                    </span>
+                  </div>
+                ))}
+                <p className="text-xs text-on-surface-variant italic mt-2 pt-2 border-t border-surface-container">
+                  Note: Live test verifies key formatting only, not network connection.
+                </p>
               </div>
             </div>
+          )}
 
-            <div style={{ padding: "1rem", backgroundColor: "rgba(0,0,0,0.3)", borderRadius: "8px", fontSize: "0.9rem", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.05)" }}>
-              <div style={{ marginBottom: "0.5rem" }}><strong>Google API Key:</strong> {results.google_search?.api_key_present ? "✅ Present" : "❌ Missing"}</div>
-              <div style={{ marginBottom: "0.5rem" }}><strong>Search Engine ID (CSE):</strong> {results.google_search?.cse_id_present ? "✅ Present" : "❌ Missing"}</div>
-              <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.5)", fontStyle: "italic", marginTop: "0.75rem" }}>
-                {results.google_search?.detail} Note: To avoid burning your quota, the live test only verifies key formatting, not network connection.
-              </div>
-            </div>
-          </div>
-
-          {/* Raw Dump */}
-          <div style={{ marginTop: "1rem" }}>
-            <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.4)", marginBottom: "0.5rem" }}>RAW PAYLOAD:</div>
-            <pre style={{ backgroundColor: "rgba(0,0,0,0.5)", padding: "1rem", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)", margin: 0, color: "rgba(255,255,255,0.7)", overflowX: "auto", fontSize: "0.85rem" }}>
+          {/* Raw Payload */}
+          <details className="bg-surface-container-lowest rounded-xl border border-surface-container">
+            <summary className="px-6 py-4 text-sm font-bold text-on-surface-variant cursor-pointer hover:text-on-surface transition-colors">
+              Raw Payload
+            </summary>
+            <pre className="px-6 pb-4 text-xs text-on-surface-variant overflow-x-auto font-mono">
               {JSON.stringify(results, null, 2)}
             </pre>
-          </div>
-
+          </details>
         </div>
       )}
     </div>

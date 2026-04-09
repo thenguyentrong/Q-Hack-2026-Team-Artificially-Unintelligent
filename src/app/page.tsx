@@ -97,6 +97,28 @@ export default function WorkspacePage() {
     return "idle";
   };
 
+  const handleExportBOM = () => {
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      "Component Name,Company,Supplier Count,RM SKU\n" +
+      bomComponents
+        .map(
+          (r) =>
+            `"${r.name}","${r.rm_company}","${r.supplier_count}","${r.rm_sku}"`
+        )
+        .join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `BOM_${selectedSku || "Export"}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Find the primary (most-used / first) component
+  const primaryComponent = bomComponents[0] || null;
+
   return (
     <div className="flex h-[calc(100vh-72px)]">
       {/* Main content */}

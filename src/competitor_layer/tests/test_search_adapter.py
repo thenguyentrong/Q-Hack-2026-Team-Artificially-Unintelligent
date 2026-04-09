@@ -19,7 +19,7 @@ def _mock_config(**overrides) -> CompetitorConfig:
         gemini_model="gemini-2.5-pro",
         max_candidates=10,
         ranking_enabled=True,
-        google_api_key=None,
+        GEMINI_API_KEY=None,
         google_cse_id=None,
         search_engine="mock",
         search_results_per_query=10,
@@ -65,7 +65,7 @@ class TestCreateSearchAdapter:
     def test_auto_with_keys_creates_google(self):
         config = _mock_config(
             search_engine="auto",
-            google_api_key="test-key",
+            GEMINI_API_KEY="test-key",
             google_cse_id="test-cse",
         )
         adapter = create_search_adapter(config)
@@ -73,7 +73,7 @@ class TestCreateSearchAdapter:
 
     def test_google_without_keys_raises(self):
         config = _mock_config(search_engine="google")
-        with pytest.raises(ValueError, match="GOOGLE_API_KEY"):
+        with pytest.raises(ValueError, match="GEMINI_API_KEY"):
             create_search_adapter(config)
 
     def test_unknown_engine_raises(self):
@@ -84,15 +84,15 @@ class TestCreateSearchAdapter:
 
 @pytest.mark.integration
 class TestGoogleSearchAdapterLive:
-    """Live integration tests — require GOOGLE_API_KEY and GOOGLE_CSE_ID."""
+    """Live integration tests — require GEMINI_API_KEY and GOOGLE_CSE_ID."""
 
     def test_live_search(self):
         import os
 
-        api_key = os.environ.get("GOOGLE_API_KEY")
+        api_key = os.environ.get("GEMINI_API_KEY")
         cse_id = os.environ.get("GOOGLE_CSE_ID")
         if not api_key or not cse_id:
-            pytest.skip("GOOGLE_API_KEY and GOOGLE_CSE_ID not set")
+            pytest.skip("GEMINI_API_KEY and GOOGLE_CSE_ID not set")
 
         adapter = GoogleSearchAdapter(api_key, cse_id)
         results = adapter.search("ascorbic acid food grade supplier", max_results=5)
