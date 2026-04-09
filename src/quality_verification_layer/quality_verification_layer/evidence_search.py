@@ -58,10 +58,8 @@ def search_supplier_evidence(
 
     with DDGS() as ddgs:
         for i, query in enumerate(queries):
-            print(
-                f"       Searching [{i+1}/{len(queries)}]: {query[:60]}...",
-                flush=True,
-            )
+            from .progress import status
+            status(f"Searching [{i+1}/{len(queries)}]: {query[:70]}")
             try:
                 results = list(ddgs.text(query, max_results=max_results_per_query))
                 for r in results:
